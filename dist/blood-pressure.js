@@ -1297,6 +1297,10 @@
   };
   var polyline = (points) => w`<polyline class="line" points=${points.map(([x2, y3]) => `${x2},${y3}`).join(" ")}></polyline>`;
   var fill = (category) => `fill: ${category.color}`;
+  var rangeLine = (reading, axis, x2, area, className = "range") => {
+    const [low, high] = rangeOf(reading, axis) ?? [0, 0];
+    return high > low ? w`<line class=${className} x1=${x2} x2=${x2} y1=${area.y(low)} y2=${area.y(high)}></line>` : A;
+  };
   var pulseArea = (readings, x2, top, bottom, right) => {
     const withPulse = readings.filter((reading) => reading.pulse !== void 0);
     const area = valueScale(valuesOf(withPulse, "pulse"), PULSE_RANGE, top, bottom, right);
@@ -1326,8 +1330,10 @@
 			${input.readings.map((reading) => {
         const top = area.y(reading.systolic);
         return w`<rect x=${x2(reading.time) - width / 2} y=${top} width=${width} rx="2"
-					height=${Math.max(area.y(reading.diastolic) - top, 2)}
-					style=${fill(classify(input.scheme, reading.systolic, reading.diastolic))}></rect>`;
+						height=${Math.max(area.y(reading.diastolic) - top, 2)}
+						style=${fill(classify(input.scheme, reading.systolic, reading.diastolic))}></rect>
+					${rangeLine(reading, "systolic", x2(reading.time), area, "whisker")}
+					${rangeLine(reading, "diastolic", x2(reading.time), area, "whisker")}`;
       })}
 			${input.pulse ? pulseArea(input.readings, (reading) => x2(reading.time), pulseTop, pulseBottom, right) : A}
 			${dates(input, right)}
@@ -1350,6 +1356,8 @@
 			${input.readings.map((reading) => {
         const style = fill(classify(input.scheme, reading.systolic, reading.diastolic));
         return w`
+					${rangeLine(reading, "systolic", x2(reading.time), area)}
+					${rangeLine(reading, "diastolic", x2(reading.time), area)}
 					<circle cx=${x2(reading.time)} cy=${area.y(reading.systolic)} r="4" style=${style}></circle>
 					<circle cx=${x2(reading.time)} cy=${area.y(reading.diastolic)} r="4" style=${style}></circle>
 				`;
@@ -1409,10 +1417,8 @@
 			${withReadings.map(({ index, reading }) => {
         const style = fill(classify(input.scheme, reading.systolic, reading.diastolic));
         return w`
-					${["systolic", "diastolic"].map((axis) => {
-          const [low, high] = rangeOf(reading, axis);
-          return w`<line class="range" x1=${x2(index)} x2=${x2(index)} y1=${area.y(low)} y2=${area.y(high)}></line>`;
-        })}
+					${rangeLine(reading, "systolic", x2(index), area)}
+					${rangeLine(reading, "diastolic", x2(index), area)}
 					<circle cx=${x2(index)} cy=${area.y(reading.systolic)} r="4" style=${style}></circle>
 					${diamond(x2(index), area.y(reading.diastolic), style)}
 				`;
@@ -1446,14 +1452,13 @@
 				<text class="axis" x=${right + 6} y=${area.y(high) + 4}>${high}</text>
 				<text class="axis" x=${LEFT} y=${top + 2}>${translate(`text.${axis}`, input.language)}</text>
 				${polyline(input.readings.map((reading) => [x2(reading.time), area.y(reading[axis])]))}
-				${input.readings.map((reading) => {
-          const [from, to] = rangeOf(reading, axis);
-          const style = fill(classifyValue(input.scheme, axis, reading[axis]));
-          return w`
-						${to > from ? w`<line class="range" x1=${x2(reading.time)} x2=${x2(reading.time)} y1=${area.y(from)} y2=${area.y(to)}></line>` : A}
-						<circle cx=${x2(reading.time)} cy=${area.y(reading[axis])} r="3.5" style=${style}></circle>
-					`;
-        })}
+				${input.readings.map(
+          (reading) => w`
+						${rangeLine(reading, axis, x2(reading.time), area)}
+						<circle cx=${x2(reading.time)} cy=${area.y(reading[axis])} r="3.5"
+							style=${fill(classifyValue(input.scheme, axis, reading[axis]))}></circle>
+					`
+        )}
 			`;
       });
       const pulseTop = TOP + 2 * step;
@@ -2196,6 +2201,13 @@
 			stroke: var(--secondary-text-color);
 			stroke-opacity: 0.35;
 			stroke-width: 6;
+			stroke-linecap: round;
+		}
+		/* The lowest to the highest measurement at the ends of a bar. */
+		.whisker {
+			stroke: var(--primary-text-color);
+			stroke-opacity: 0.55;
+			stroke-width: 2;
 			stroke-linecap: round;
 		}
 		.limit {

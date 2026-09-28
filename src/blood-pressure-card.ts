@@ -193,6 +193,13 @@ export class BloodPressureCard extends LitElement implements LovelaceCard {
 			stroke-width: 6;
 			stroke-linecap: round;
 		}
+		/* The lowest to the highest measurement at the ends of a bar. */
+		.whisker {
+			stroke: var(--primary-text-color);
+			stroke-opacity: 0.55;
+			stroke-width: 2;
+			stroke-linecap: round;
+		}
 		.limit {
 			stroke: var(--secondary-text-color);
 			stroke-opacity: 0.6;
