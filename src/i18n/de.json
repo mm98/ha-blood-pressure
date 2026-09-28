@@ -1,0 +1,72 @@
+{
+	"card": {
+		"description": "Deine Blutdruckwerte im Zeitverlauf, gefärbt nach den Kategorien einer Blutdruck-Leitlinie."
+	},
+	"label": {
+		"systolic": "Sensor für den systolischen (oberen) Wert",
+		"diastolic": "Sensor für den diastolischen (unteren) Wert",
+		"pulse": "Sensor für den Puls",
+		"chart": "Diagramm",
+		"chart_type": "Diagramm",
+		"days_to_show": "Anzuzeigende Tage",
+		"guideline": "Leitlinie",
+		"show": "Anzeigen",
+		"show_name": "Name",
+		"show_icon": "Symbol",
+		"show_state": "Letzter Wert",
+		"show_category": "Kategorie der letzten Messung",
+		"show_average": "Durchschnitt und niedrigster bis höchster Wert",
+		"show_pulse": "Puls",
+		"show_scales": "Skalen für die letzte Messung",
+		"show_chart": "Diagramm",
+		"show_legend": "Kategorien unter dem Diagramm"
+	},
+	"helper": {
+		"pulse": "Optional.",
+		"days_to_show": "Der Recorder speichert standardmäßig 10 Tage.",
+		"guideline": "Bestimmt die Kategorie und die Farbe jeder Messung.",
+		"show_pulse": "Der letzte Puls und eine Pulslinie unter dem Diagramm."
+	},
+	"chart_type": {
+		"bars": "Balken (Standard)",
+		"lines": "Linien",
+		"daily": "Tagesdurchschnitte",
+		"split": "Getrennte Diagramme",
+		"calendar": "Kalender",
+		"pie": "Kreisdiagramm"
+	},
+	"guideline": {
+		"esc_2024": "ESC 2024, Europa (Standard)",
+		"esc_esh_2018": "ESC/ESH 2018, Europa",
+		"acc_aha_2017": "ACC/AHA 2017, USA"
+	},
+	"category": {
+		"low": "Niedrig",
+		"non_elevated": "Nicht erhöht",
+		"elevated": "Erhöht",
+		"hypertension": "Hypertonie",
+		"optimal": "Optimal",
+		"normal": "Normal",
+		"high_normal": "Hoch normal",
+		"grade_1": "Hypertonie Grad 1",
+		"grade_2": "Hypertonie Grad 2",
+		"grade_3": "Hypertonie Grad 3",
+		"stage_1": "Hypertonie Stadium 1",
+		"stage_2": "Hypertonie Stadium 2",
+		"crisis": "Hypertensive Krise"
+	},
+	"text": {
+		"name": "Blutdruck",
+		"pulse": "Puls {pulse}",
+		"average": "Durchschnitt {systolic}/{diastolic} aus {count} Messungen",
+		"average_one": "Durchschnitt {systolic}/{diastolic} aus 1 Messung",
+		"reading": "Messung",
+		"readings": "Messungen",
+		"no_readings": "Keine Messungen in den letzten {days} Tagen. Der Recorder muss den Verlauf dieser Sensoren speichern.",
+		"no_history": "Der Verlauf der Sensoren konnte nicht gelesen werden.",
+		"systolic": "Systolisch",
+		"diastolic": "Diastolisch",
+		"pulse_name": "Puls",
+		"ranges": "systolisch {systolic}, diastolisch {diastolic}"
+	}
+}

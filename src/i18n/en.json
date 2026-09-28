@@ -1,0 +1,72 @@
+{
+	"card": {
+		"description": "Your blood pressure readings over time, colored by the categories of a blood pressure guideline."
+	},
+	"label": {
+		"systolic": "Sensor for the systolic (upper) value",
+		"diastolic": "Sensor for the diastolic (lower) value",
+		"pulse": "Sensor for the pulse",
+		"chart": "Chart",
+		"chart_type": "Chart",
+		"days_to_show": "Days to show",
+		"guideline": "Guideline",
+		"show": "Show",
+		"show_name": "Name",
+		"show_icon": "Icon",
+		"show_state": "Latest value",
+		"show_category": "Category of the latest reading",
+		"show_average": "Average and lowest to highest value",
+		"show_pulse": "Pulse",
+		"show_scales": "Scales for the latest reading",
+		"show_chart": "Chart",
+		"show_legend": "Categories below the chart"
+	},
+	"helper": {
+		"pulse": "Optional.",
+		"days_to_show": "The recorder keeps 10 days by default.",
+		"guideline": "Decides the category and the color of each reading.",
+		"show_pulse": "The latest pulse, and a pulse line below the chart."
+	},
+	"chart_type": {
+		"bars": "Bars (default)",
+		"lines": "Lines",
+		"daily": "Daily averages",
+		"split": "Separate charts",
+		"calendar": "Calendar",
+		"pie": "Pie chart"
+	},
+	"guideline": {
+		"esc_2024": "ESC 2024, Europe (default)",
+		"esc_esh_2018": "ESC/ESH 2018, Europe",
+		"acc_aha_2017": "ACC/AHA 2017, United States"
+	},
+	"category": {
+		"low": "Low",
+		"non_elevated": "Non-elevated",
+		"elevated": "Elevated",
+		"hypertension": "Hypertension",
+		"optimal": "Optimal",
+		"normal": "Normal",
+		"high_normal": "High normal",
+		"grade_1": "Grade 1 hypertension",
+		"grade_2": "Grade 2 hypertension",
+		"grade_3": "Grade 3 hypertension",
+		"stage_1": "Stage 1 hypertension",
+		"stage_2": "Stage 2 hypertension",
+		"crisis": "Hypertensive crisis"
+	},
+	"text": {
+		"name": "Blood pressure",
+		"pulse": "Pulse {pulse}",
+		"average": "average {systolic}/{diastolic} of {count} readings",
+		"average_one": "average {systolic}/{diastolic} of 1 reading",
+		"reading": "reading",
+		"readings": "readings",
+		"no_readings": "No readings in the last {days} days. The recorder must keep the history of these sensors.",
+		"no_history": "The history of the sensors could not be read.",
+		"systolic": "Systolic",
+		"diastolic": "Diastolic",
+		"pulse_name": "Pulse",
+		"ranges": "systolic {systolic}, diastolic {diastolic}"
+	}
+}
