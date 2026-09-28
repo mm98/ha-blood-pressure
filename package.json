@@ -1,6 +1,6 @@
 {
 	"name": "ha-blood-pressure",
-	"version": "0.1.0",
+	"version": "0.2.0",
 	"description": "A Home Assistant dashboard card with your blood pressure readings over time, colored by a blood pressure guideline.",
 	"homepage": "https://github.com/mm98/ha-blood-pressure",
 	"license": "MIT",

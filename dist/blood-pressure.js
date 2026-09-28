@@ -1,4 +1,4 @@
-/* Blood pressure 0.1.0, https://github.com/mm98/ha-blood-pressure */
+/* Blood pressure 0.2.0, https://github.com/mm98/ha-blood-pressure */
 "use strict";
 (() => {
   var __create = Object.create;
@@ -2287,7 +2287,7 @@
 	`);
 
   // src/blood-pressure.ts
-  var VERSION = "0.1.0";
+  var VERSION = "0.2.0";
   var REPOSITORY = "https://github.com/mm98/ha-blood-pressure";
   var defineOnce = (tag, element) => {
     if (!customElements.get(tag)) {
