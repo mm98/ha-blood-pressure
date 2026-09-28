@@ -9,6 +9,7 @@
 		"chart": "Gráfico",
 		"chart_type": "Gráfico",
 		"days_to_show": "Días a mostrar",
+		"height": "Altura del gráfico",
 		"guideline": "Guía",
 		"show": "Mostrar",
 		"show_title": "Título",
@@ -26,7 +27,8 @@
 	"helper": {
 		"pulse": "Opcional.",
 		"days_to_show": "El recorder guarda 10 días de forma predeterminada.",
-		"guideline": "Decide la categoría y el color de cada medición."
+		"guideline": "Decide la categoría y el color de cada medición.",
+		"height": "Déjalo vacío para usar la altura del tipo de gráfico."
 	},
 	"chart_type": {
 		"bars": "Barras (predeterminado)",

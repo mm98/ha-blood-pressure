@@ -3,7 +3,7 @@
 
 import { css, html, LitElement, nothing, type PropertyValues, type TemplateResult } from "lit";
 import { property, state } from "lit/decorators.js";
-import { CHARTS, type ChartInput, sharesOf, WIDTH } from "./charts";
+import { CHARTS, type ChartInput, sharesOf } from "./charts";
 import { type BloodPressureConfig, DEFAULT_DAYS, shows } from "./config";
 import { EDITOR_TAG } from "./blood-pressure-editor";
 import { classify, positionOf, SCALE_LIMITS, scaleOf, type Scheme, schemeOf } from "./guidelines";
@@ -29,6 +29,10 @@ export const CARD_TAG = "blood-pressure";
 
 const DAY_MS = 24 * 3600 * 1000;
 
+// The card's left and right padding, around the chart.
+const PADDING = 32;
+// The width of the chart until the card has measured itself.
+const CHART_WIDTH = 418;
 
 const numberOf = (stateObj: HassEntity): number | undefined => {
 	const value = stateObj.state === "" ? NaN : Number(stateObj.state);
@@ -39,6 +43,10 @@ export class BloodPressureCard extends LitElement implements LovelaceCard {
 	// The header copies Home Assistant's entity card
 	// (src/panels/lovelace/cards/hui-entity-card.ts). The additions are marked.
 	static override styles = css`
+		/* Added: a block, so the card can measure its width for the chart. */
+		:host {
+			display: block;
+		}
 		ha-card {
 			height: 100%;
 			display: flex;
@@ -109,7 +117,7 @@ export class BloodPressureCard extends LitElement implements LovelaceCard {
 		.details:first-child,
 		.scales:first-child,
 		svg:first-child {
-			padding-top: 16px;
+			margin-top: 16px;
 		}
 		.range-text {
 			min-width: 52px;
@@ -149,12 +157,10 @@ export class BloodPressureCard extends LitElement implements LovelaceCard {
 			border-radius: 2px;
 			background-color: var(--primary-text-color);
 		}
+		/* The chart is drawn at the size it shows, so text and dots keep their size. */
 		svg {
 			display: block;
-			width: 100%;
-			height: auto;
-			padding: 0 16px;
-			box-sizing: border-box;
+			margin: 0 16px;
 		}
 		.grid {
 			stroke: var(--divider-color);
@@ -282,6 +288,10 @@ export class BloodPressureCard extends LitElement implements LovelaceCard {
 	// Counts the reads, so only the newest one is shown.
 	private _readCount = 0;
 
+	// The width the chart can use, measured, and the observer that measures it.
+	@state() private accessor _width = CHART_WIDTH;
+	private _resizeObserver?: ResizeObserver;
+
 	static getConfigElement(): LovelaceCardEditor {
 		return document.createElement(EDITOR_TAG);
 	}
@@ -313,6 +323,19 @@ export class BloodPressureCard extends LitElement implements LovelaceCard {
 				// The warning then shows as plain text. The next connect tries again.
 			},
 		);
+		// The chart is drawn at the width of the card, so it is drawn again
+		// when the card gets wider or narrower.
+		this._resizeObserver ??= new ResizeObserver(() => {
+			if (this.clientWidth) {
+				this._width = Math.round(this.clientWidth - PADDING);
+			}
+		});
+		this._resizeObserver.observe(this);
+	}
+
+	override disconnectedCallback(): void {
+		super.disconnectedCallback();
+		this._resizeObserver?.disconnect();
 	}
 
 	private get _entityIds(): string[] {
@@ -325,7 +348,7 @@ export class BloodPressureCard extends LitElement implements LovelaceCard {
 			return false;
 		}
 		return (
-			["_config", "_ready", "_readings", "_failed"].some((key) => changed.has(key)) ||
+			["_config", "_ready", "_readings", "_failed", "_width"].some((key) => changed.has(key)) ||
 			hasHassChanged(this._drawnHass, this.hass, this._entityIds)
 		);
 	}
@@ -334,6 +357,10 @@ export class BloodPressureCard extends LitElement implements LovelaceCard {
 	// the ! below in willUpdate, render and updated are safe.
 	protected override willUpdate(): void {
 		this._drawnHass = this.hass;
+		// Also measured here, as resize notifications wait for the page to be shown.
+		if (this.clientWidth) {
+			this._width = Math.round(this.clientWidth - PADDING);
+		}
 	}
 
 	protected override updated(): void {
@@ -513,6 +540,7 @@ export class BloodPressureCard extends LitElement implements LovelaceCard {
 								.locale=${hass.locale}
 								.needle=${true}
 								.levels=${levels}
+								style=${config.height ? `max-width: ${config.height * 2}px` : nothing}
 							></ha-gauge>
 							<p class="title">
 								${known
@@ -558,7 +586,10 @@ export class BloodPressureCard extends LitElement implements LovelaceCard {
 				: html`<div class="end"></div>`;
 		}
 		const end = Date.now();
-		const input: ChartInput = {
+		const type = config.chart_type === undefined || config.chart_type === "gauge" ? "bars" : config.chart_type;
+		const chart = CHARTS[type];
+		const base: Omit<ChartInput, "height"> = {
+			width: this._width,
 			readings: this._readings,
 			scheme,
 			start: end - days * DAY_MS,
@@ -568,11 +599,14 @@ export class BloodPressureCard extends LitElement implements LovelaceCard {
 			language,
 			timeZone: hass.locale.time_zone === "server" ? hass.config.time_zone : undefined,
 		};
-		const type = config.chart_type === undefined || config.chart_type === "gauge" ? "bars" : config.chart_type;
-		const chart = CHARTS[type];
+		const input: ChartInput = { ...base, height: config.height ?? chart.height(base) };
 		const shares = sharesOf(this._readings, scheme);
 		return html`
-			${showChart ? html`<svg viewBox=${`0 0 ${WIDTH} ${chart.height(input)}`}>${chart.draw(input)}</svg>` : nothing}
+			${showChart
+				? html`<svg width=${input.width} height=${input.height} viewBox=${`0 0 ${input.width} ${input.height}`}>
+						${chart.draw(input)}
+					</svg>`
+				: nothing}
 			${shows(config, "show_legend")
 				? html`<div class="legend">
 						${shares.map(

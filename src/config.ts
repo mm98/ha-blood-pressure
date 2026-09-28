@@ -21,6 +21,8 @@ export interface EditorConfig extends LovelaceCardConfig {
 	title?: string;
 	chart_type?: ChartType;
 	days_to_show?: number;
+	// The height of the chart in pixels. Each chart type has its own by default.
+	height?: number;
 	guideline?: GuidelineId;
 	// The color of each category, a Home Assistant theme color like amber or
 	// any CSS color. Categories without one keep their own color.

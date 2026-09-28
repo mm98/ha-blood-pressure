@@ -9,6 +9,7 @@
 		"chart": "Chart",
 		"chart_type": "Chart",
 		"days_to_show": "Days to show",
+		"height": "Chart height",
 		"guideline": "Guideline",
 		"show": "Show",
 		"show_title": "Title",
@@ -26,7 +27,8 @@
 	"helper": {
 		"pulse": "Optional.",
 		"days_to_show": "The recorder keeps 10 days by default.",
-		"guideline": "Decides the category and the color of each reading."
+		"guideline": "Decides the category and the color of each reading.",
+		"height": "Leave empty for the height of the chart type."
 	},
 	"chart_type": {
 		"bars": "Bars (default)",

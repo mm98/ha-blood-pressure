@@ -32,6 +32,9 @@ export function validateEditorConfig(config: unknown): asserts config is EditorC
 	) {
 		throw new Error("colors must be a map from a category to a color, like elevated: amber.");
 	}
+	if (isSet(values.height) && !(typeof values.height === "number" && values.height > 0)) {
+		throw new Error("height must be a number of pixels above 0.");
+	}
 	for (const key of SHOW_KEYS) {
 		if (isSet(values[key]) && typeof values[key] !== "boolean") {
 			throw new Error(`${key} must be true or false.`);
