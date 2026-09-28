@@ -1,0 +1,11 @@
+{
+  "domain": "blood_pressure",
+  "name": "Blood Pressure Card",
+  "codeowners": ["@mm98"],
+  "config_flow": false,
+  "documentation": "https://github.com/mm98/ha-blood-pressure",
+  "homeassistant": "2026.9.0",
+  "iot_class": "local_polling",
+  "render_readme": true,
+  "version": "0.1.0"
+}
