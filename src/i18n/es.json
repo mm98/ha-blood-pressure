@@ -1,0 +1,74 @@
+{
+	"card": {
+		"description": "Tus mediciones de presión arterial a lo largo del tiempo, con los colores de las categorías de una guía de presión arterial."
+	},
+	"label": {
+		"systolic": "Sensor del valor sistólico (superior)",
+		"diastolic": "Sensor del valor diastólico (inferior)",
+		"pulse": "Sensor del pulso",
+		"chart": "Gráfico",
+		"chart_type": "Gráfico",
+		"days_to_show": "Días a mostrar",
+		"guideline": "Guía",
+		"show": "Mostrar",
+		"show_title": "Título",
+		"show_icon": "Icono",
+		"show_state": "Último valor",
+		"show_category": "Categoría de la última medición",
+		"show_average": "Promedio y valor más bajo a más alto",
+		"show_pulse": "Pulso",
+		"show_scales": "Escalas de la última medición",
+		"show_chart": "Gráfico",
+		"show_legend": "Categorías debajo del gráfico",
+		"colors": "Colores",
+		"show_parts": ""
+	},
+	"helper": {
+		"pulse": "Opcional.",
+		"days_to_show": "El recorder guarda 10 días de forma predeterminada.",
+		"guideline": "Decide la categoría y el color de cada medición."
+	},
+	"chart_type": {
+		"bars": "Barras (predeterminado)",
+		"lines": "Líneas",
+		"daily": "Promedios diarios",
+		"split": "Gráficos separados",
+		"calendar": "Calendario",
+		"pie": "Gráfico circular",
+		"gauge": "Indicadores"
+	},
+	"guideline": {
+		"esc_2024": "ESC 2024, Europa (predeterminada)",
+		"esc_esh_2018": "ESC/ESH 2018, Europa",
+		"acc_aha_2017": "ACC/AHA 2017, Estados Unidos"
+	},
+	"category": {
+		"low": "Baja",
+		"non_elevated": "No elevada",
+		"elevated": "Elevada",
+		"hypertension": "Hipertensión",
+		"optimal": "Óptima",
+		"normal": "Normal",
+		"high_normal": "Normal alta",
+		"grade_1": "Hipertensión grado 1",
+		"grade_2": "Hipertensión grado 2",
+		"grade_3": "Hipertensión grado 3",
+		"stage_1": "Hipertensión estadio 1",
+		"stage_2": "Hipertensión estadio 2",
+		"crisis": "Crisis hipertensiva"
+	},
+	"text": {
+		"title": "Presión arterial",
+		"pulse": "Pulso {pulse}",
+		"average": "promedio {systolic}/{diastolic} de {count} mediciones",
+		"average_one": "promedio {systolic}/{diastolic} de 1 medición",
+		"reading": "medición",
+		"readings": "mediciones",
+		"no_readings": "No hay mediciones en los últimos {days} días. El recorder debe guardar el historial de estos sensores.",
+		"no_history": "No se pudo leer el historial de los sensores.",
+		"systolic": "Sistólica",
+		"diastolic": "Diastólica",
+		"pulse_name": "Pulso",
+		"ranges": "sistólica {systolic}, diastólica {diastolic}"
+	}
+}

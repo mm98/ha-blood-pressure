@@ -1,6 +1,6 @@
 {
-  "name": "Blood Pressure Card",
-  "filename": "blood-pressure-card.js",
-  "homeassistant": "2026.9.0",
-  "render_readme": true
+	"name": "Blood Pressure",
+	"filename": "blood-pressure.js",
+	"homeassistant": "2026.9.0",
+	"render_readme": true
 }

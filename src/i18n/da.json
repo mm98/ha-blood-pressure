@@ -1,0 +1,74 @@
+{
+	"card": {
+		"description": "Dine blodtryksmålinger over tid, farvet efter kategorierne i en retningslinje for blodtryk."
+	},
+	"label": {
+		"systolic": "Sensor for den systoliske (øverste) værdi",
+		"diastolic": "Sensor for den diastoliske (nederste) værdi",
+		"pulse": "Sensor for pulsen",
+		"chart": "Diagram",
+		"chart_type": "Diagram",
+		"days_to_show": "Antal dage",
+		"guideline": "Retningslinje",
+		"show": "Vis",
+		"show_title": "Titel",
+		"show_icon": "Ikon",
+		"show_state": "Seneste værdi",
+		"show_category": "Kategori for seneste måling",
+		"show_average": "Gennemsnit og laveste til højeste værdi",
+		"show_pulse": "Puls",
+		"show_scales": "Skalaer for seneste måling",
+		"show_chart": "Diagram",
+		"show_legend": "Kategorier under diagrammet",
+		"colors": "Farver",
+		"show_parts": ""
+	},
+	"helper": {
+		"pulse": "Valgfri.",
+		"days_to_show": "Recorder gemmer som standard 10 dage.",
+		"guideline": "Bestemmer kategorien og farven for hver måling."
+	},
+	"chart_type": {
+		"bars": "Søjler (standard)",
+		"lines": "Linjer",
+		"daily": "Gennemsnit pr. dag",
+		"split": "Separate diagrammer",
+		"calendar": "Kalender",
+		"pie": "Cirkeldiagram",
+		"gauge": "Målere"
+	},
+	"guideline": {
+		"esc_2024": "ESC 2024, Europa (standard)",
+		"esc_esh_2018": "ESC/ESH 2018, Europa",
+		"acc_aha_2017": "ACC/AHA 2017, USA"
+	},
+	"category": {
+		"low": "Lavt",
+		"non_elevated": "Ikke forhøjet",
+		"elevated": "Forhøjet",
+		"hypertension": "Hypertension",
+		"optimal": "Optimalt",
+		"normal": "Normalt",
+		"high_normal": "Højt normalt",
+		"grade_1": "Hypertension grad 1",
+		"grade_2": "Hypertension grad 2",
+		"grade_3": "Hypertension grad 3",
+		"stage_1": "Hypertension stadie 1",
+		"stage_2": "Hypertension stadie 2",
+		"crisis": "Hypertensiv krise"
+	},
+	"text": {
+		"title": "Blodtryk",
+		"pulse": "Puls {pulse}",
+		"average": "gennemsnit {systolic}/{diastolic} af {count} målinger",
+		"average_one": "gennemsnit {systolic}/{diastolic} af 1 måling",
+		"reading": "måling",
+		"readings": "målinger",
+		"no_readings": "Ingen målinger de seneste {days} dage. Recorder skal gemme historikken for disse sensorer.",
+		"no_history": "Historikken for sensorerne kunne ikke læses.",
+		"systolic": "Systolisk",
+		"diastolic": "Diastolisk",
+		"pulse_name": "Puls",
+		"ranges": "systolisk {systolic}, diastolisk {diastolic}"
+	}
+}
