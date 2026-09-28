@@ -38,7 +38,7 @@ To try a change, copy `dist/blood-pressure.js` into the `www` folder of a Home A
 2. Import it in `src/i18n/index.ts` and add it to `TRANSLATIONS`.
 3. Run `npm run check`. It fails when a text is missing.
 
-Labels of fields Home Assistant already knows, like name, icon and state, come from Home Assistant's own translations.
+The label of the title field comes from Home Assistant's own translations.
 
 ## Add a guideline
 

@@ -11,7 +11,7 @@
 		"days_to_show": "Anzuzeigende Tage",
 		"guideline": "Leitlinie",
 		"show": "Anzeigen",
-		"show_name": "Name",
+		"show_title": "Titel",
 		"show_icon": "Symbol",
 		"show_state": "Letzter Wert",
 		"show_category": "Kategorie der letzten Messung",
@@ -19,13 +19,14 @@
 		"show_pulse": "Puls",
 		"show_scales": "Skalen für die letzte Messung",
 		"show_chart": "Diagramm",
-		"show_legend": "Kategorien unter dem Diagramm"
+		"show_legend": "Kategorien unter dem Diagramm",
+		"colors": "Farben",
+		"show_parts": ""
 	},
 	"helper": {
 		"pulse": "Optional.",
 		"days_to_show": "Der Recorder speichert standardmäßig 10 Tage.",
-		"guideline": "Bestimmt die Kategorie und die Farbe jeder Messung.",
-		"show_pulse": "Der letzte Puls und eine Pulslinie unter dem Diagramm."
+		"guideline": "Bestimmt die Kategorie und die Farbe jeder Messung."
 	},
 	"chart_type": {
 		"bars": "Balken (Standard)",
@@ -33,7 +34,8 @@
 		"daily": "Tagesdurchschnitte",
 		"split": "Getrennte Diagramme",
 		"calendar": "Kalender",
-		"pie": "Kreisdiagramm"
+		"pie": "Kreisdiagramm",
+		"gauge": "Messanzeigen"
 	},
 	"guideline": {
 		"esc_2024": "ESC 2024, Europa (Standard)",
@@ -56,7 +58,7 @@
 		"crisis": "Hypertensive Krise"
 	},
 	"text": {
-		"name": "Blutdruck",
+		"title": "Blutdruck",
 		"pulse": "Puls {pulse}",
 		"average": "Durchschnitt {systolic}/{diastolic} aus {count} Messungen",
 		"average_one": "Durchschnitt {systolic}/{diastolic} aus 1 Messung",

@@ -637,11 +637,11 @@
   }
 
   // src/config.ts
-  var CHART_TYPES = ["bars", "lines", "daily", "split", "calendar", "pie"];
+  var CHART_TYPES = ["bars", "lines", "daily", "split", "calendar", "pie", "gauge"];
   var GUIDELINE_IDS = ["esc_2024", "esc_esh_2018", "acc_aha_2017"];
   var DEFAULT_DAYS = 10;
   var SHOW_KEYS = [
-    "show_name",
+    "show_title",
     "show_icon",
     "show_state",
     "show_category",
@@ -661,63 +661,157 @@
   var PULSE_RANGE = [60, 100];
   var isSet = (value) => value !== void 0 && value !== null && value !== "";
 
+  // src/home-assistant.ts
+  var THEME_COLORS = /* @__PURE__ */ new Set([
+    "primary",
+    "accent",
+    "red",
+    "pink",
+    "purple",
+    "deep-purple",
+    "indigo",
+    "blue",
+    "light-blue",
+    "cyan",
+    "teal",
+    "green",
+    "light-green",
+    "lime",
+    "yellow",
+    "amber",
+    "orange",
+    "deep-orange",
+    "brown",
+    "light-grey",
+    "grey",
+    "dark-grey",
+    "blue-grey",
+    "black",
+    "white"
+  ]);
+  var YAML_ONLY_THEMES_COLORS = /* @__PURE__ */ new Set(["primary-text", "secondary-text", "disabled"]);
+  var computeCssVariableName = (color) => THEME_COLORS.has(color) || YAML_ONLY_THEMES_COLORS.has(color) ? `--${color}-color` : color;
+  var computeCssColor = (color) => {
+    const cssVarName = computeCssVariableName(color);
+    return cssVarName !== color ? `var(${cssVarName})` : color;
+  };
+  var fireEvent = (node, type, detail, options) => {
+    options = options || {};
+    const event = new Event(type, {
+      bubbles: options.bubbles === void 0 ? true : options.bubbles,
+      cancelable: Boolean(options.cancelable),
+      composed: options.composed === void 0 ? true : options.composed
+    });
+    event.detail = detail === null || detail === void 0 ? {} : detail;
+    node.dispatchEvent(event);
+    return event;
+  };
+  var DISPLAY_KEYS = ["connected", "themes", "locale", "localize"];
+  var hasHassChanged = (old, hass, entityIds) => !old || DISPLAY_KEYS.some((key) => old[key] !== hass[key]) || old.config.state !== hass.config.state || old.config.time_zone !== hass.config.time_zone || entityIds.some((entityId) => old.states[entityId] !== hass.states[entityId]);
+  var createEntityNotFoundWarning = (hass, entityId) => hass.config.state !== "NOT_RUNNING" ? hass.localize("ui.panel.lovelace.warning.entity_not_found", { entity: entityId }) : hass.localize("ui.panel.lovelace.warning.starting");
+  var loading = /* @__PURE__ */ new Map();
+  var loadOnce = (key, tags, load) => {
+    let promise = loading.get(key);
+    if (!promise) {
+      promise = (async () => {
+        if (!tags.every((tag) => customElements.get(tag))) {
+          await load();
+          await Promise.all(tags.map((tag) => customElements.whenDefined(tag)));
+        }
+      })();
+      promise.catch(() => loading.delete(key));
+      loading.set(key, promise);
+    }
+    return promise;
+  };
+  var loadCardElements = () => loadOnce("card", ["hui-warning"], async () => {
+    (await window.loadCardHelpers()).createCardElement({ type: "entity", entity: "sun.sun" });
+  });
+  var loadGaugeElements = () => loadOnce("gauge", ["ha-gauge"], async () => {
+    (await window.loadCardHelpers()).createCardElement({ type: "gauge", entity: "sun.sun" });
+  });
+  var loadEditorElements = () => loadOnce("editor", ["ha-form"], async () => {
+    (await window.loadCardHelpers()).createCardElement({ type: "entities", entities: [] });
+    await customElements.whenDefined("hui-entities-card");
+    const card = customElements.get("hui-entities-card");
+    await card.getConfigElement();
+  });
+
   // src/guidelines.ts
-  var color = (name, fallback) => `var(--${name}-color, ${fallback})`;
-  var GREEN = color("green", "#4caf50");
-  var LIGHT_GREEN = color("light-green", "#8bc34a");
-  var AMBER = color("amber", "#ffc107");
-  var ORANGE = color("orange", "#ff9800");
-  var DEEP_ORANGE = color("deep-orange", "#ff5722");
-  var RED = color("red", "#f44336");
-  var LOW = { key: "low", systolic: 90, diastolic: 60, color: color("blue", "#2196f3") };
+  var LOW = { key: "low", systolic: 90, diastolic: 60, color: "blue" };
   var ABOVE = 1e-9;
   var GUIDELINES = {
     // 2024 ESC Guidelines for the management of elevated blood pressure and hypertension.
     esc_2024: [
-      { key: "non_elevated", systolic: 0, diastolic: 0, color: GREEN },
-      { key: "elevated", systolic: 120, diastolic: 70, color: AMBER },
-      { key: "hypertension", systolic: 140, diastolic: 90, color: RED }
+      { key: "non_elevated", systolic: 0, diastolic: 0, color: "green" },
+      { key: "elevated", systolic: 120, diastolic: 70, color: "amber" },
+      { key: "hypertension", systolic: 140, diastolic: 90, color: "red" }
     ],
     // 2018 ESC/ESH Guidelines for the management of arterial hypertension.
     esc_esh_2018: [
-      { key: "optimal", systolic: 0, diastolic: 0, color: GREEN },
-      { key: "normal", systolic: 120, diastolic: 80, color: LIGHT_GREEN },
-      { key: "high_normal", systolic: 130, diastolic: 85, color: AMBER },
-      { key: "grade_1", systolic: 140, diastolic: 90, color: ORANGE },
-      { key: "grade_2", systolic: 160, diastolic: 100, color: DEEP_ORANGE },
-      { key: "grade_3", systolic: 180, diastolic: 110, color: RED }
+      { key: "optimal", systolic: 0, diastolic: 0, color: "green" },
+      { key: "normal", systolic: 120, diastolic: 80, color: "light-green" },
+      { key: "high_normal", systolic: 130, diastolic: 85, color: "amber" },
+      { key: "grade_1", systolic: 140, diastolic: 90, color: "orange" },
+      { key: "grade_2", systolic: 160, diastolic: 100, color: "deep-orange" },
+      { key: "grade_3", systolic: 180, diastolic: 110, color: "red" }
     ],
     // 2017 ACC/AHA Guideline for high blood pressure in adults. Elevated is
     // set by the systolic value alone, and a crisis starts above 180 or above 120.
     acc_aha_2017: [
-      { key: "normal", systolic: 0, diastolic: 0, color: GREEN },
-      { key: "elevated", systolic: 120, diastolic: Infinity, color: AMBER },
-      { key: "stage_1", systolic: 130, diastolic: 80, color: ORANGE },
-      { key: "stage_2", systolic: 140, diastolic: 90, color: DEEP_ORANGE },
-      { key: "crisis", systolic: 180 + ABOVE, diastolic: 120 + ABOVE, color: RED }
+      { key: "normal", systolic: 0, diastolic: 0, color: "green" },
+      { key: "elevated", systolic: 120, diastolic: Infinity, color: "amber" },
+      { key: "stage_1", systolic: 130, diastolic: 80, color: "orange" },
+      { key: "stage_2", systolic: 140, diastolic: 90, color: "deep-orange" },
+      { key: "crisis", systolic: 180 + ABOVE, diastolic: 120 + ABOVE, color: "red" }
     ]
   };
+  var PULSE_COLORS = { usual: computeCssColor("green"), fast: computeCssColor("amber") };
+  var categoriesOf = (guideline) => [LOW, ...GUIDELINES[guideline]];
+  var schemeOf = (guideline, colors = {}) => {
+    const paint = (category) => ({
+      ...category,
+      color: computeCssColor(colors[category.key] || category.color)
+    });
+    return { low: paint(LOW), categories: GUIDELINES[guideline].map(paint) };
+  };
   var levelOf = (categories, value, axis) => categories.reduce((level, category, index) => value >= category[axis] ? index : level, 0);
-  var classify = (categories, systolic, diastolic) => {
+  var classify = ({ low, categories }, systolic, diastolic) => {
     const level = Math.max(levelOf(categories, systolic, "systolic"), levelOf(categories, diastolic, "diastolic"));
-    if (level === 0 && (systolic < LOW.systolic || diastolic < LOW.diastolic)) {
-      return LOW;
+    if (level === 0 && (systolic < low.systolic || diastolic < low.diastolic)) {
+      return low;
     }
     return categories[level];
   };
-  var classifyValue = (categories, axis, value) => {
+  var classifyValue = ({ low, categories }, axis, value) => {
     const level = levelOf(categories, value, axis);
-    return level === 0 && value < LOW[axis] ? LOW : categories[level];
+    return level === 0 && value < low[axis] ? low : categories[level];
   };
-  var normalRange = (categories, axis) => [
-    LOW[axis],
+  var normalRange = ({ low, categories }, axis) => [
+    low[axis],
     Math.min(...categories.slice(1).map((category) => category[axis]))
   ];
-  var scaleOf = (categories, axis) => [
-    { from: -Infinity, category: LOW },
-    { from: LOW[axis], category: categories[0] },
+  var scaleOf = ({ low, categories }, axis) => [
+    { from: -Infinity, category: low },
+    { from: low[axis], category: categories[0] },
     ...categories.slice(1).filter((category) => Number.isFinite(category[axis])).map((category) => ({ from: category[axis], category }))
   ];
+  var SCALE_LIMITS = { systolic: [70, 200], diastolic: [40, 130] };
+  var positionOf = (scheme, systolic, diastolic) => {
+    const category = classify(scheme, systolic, diastolic);
+    const fractions = ["systolic", "diastolic"].flatMap((axis) => {
+      const value = axis === "systolic" ? systolic : diastolic;
+      if (classifyValue(scheme, axis, value) !== category) {
+        return [];
+      }
+      const steps = scaleOf(scheme, axis);
+      const step = steps.findIndex((item) => item.category === category);
+      const from = Math.max(steps[step].from, SCALE_LIMITS[axis][0]);
+      const to = steps[step + 1]?.from ?? SCALE_LIMITS[axis][1];
+      return [Math.min(Math.max((value - from) / (to - from), 0), 0.99)];
+    });
+    return [scheme.low, ...scheme.categories].indexOf(category) + (fractions.length ? Math.max(...fractions) : 0.5);
+  };
 
   // src/i18n/da.json
   var da_default = {
@@ -733,7 +827,7 @@
       days_to_show: "Antal dage",
       guideline: "Retningslinje",
       show: "Vis",
-      show_name: "Navn",
+      show_title: "Titel",
       show_icon: "Ikon",
       show_state: "Seneste værdi",
       show_category: "Kategori for seneste måling",
@@ -741,13 +835,14 @@
       show_pulse: "Puls",
       show_scales: "Skalaer for seneste måling",
       show_chart: "Diagram",
-      show_legend: "Kategorier under diagrammet"
+      show_legend: "Kategorier under diagrammet",
+      colors: "Farver",
+      show_parts: ""
     },
     helper: {
       pulse: "Valgfri.",
       days_to_show: "Recorder gemmer som standard 10 dage.",
-      guideline: "Bestemmer kategorien og farven for hver måling.",
-      show_pulse: "Seneste puls og en pulslinje under diagrammet."
+      guideline: "Bestemmer kategorien og farven for hver måling."
     },
     chart_type: {
       bars: "Søjler (standard)",
@@ -755,7 +850,8 @@
       daily: "Gennemsnit pr. dag",
       split: "Separate diagrammer",
       calendar: "Kalender",
-      pie: "Cirkeldiagram"
+      pie: "Cirkeldiagram",
+      gauge: "Målere"
     },
     guideline: {
       esc_2024: "ESC 2024, Europa (standard)",
@@ -778,7 +874,7 @@
       crisis: "Hypertensiv krise"
     },
     text: {
-      name: "Blodtryk",
+      title: "Blodtryk",
       pulse: "Puls {pulse}",
       average: "gennemsnit {systolic}/{diastolic} af {count} målinger",
       average_one: "gennemsnit {systolic}/{diastolic} af 1 måling",
@@ -807,7 +903,7 @@
       days_to_show: "Anzuzeigende Tage",
       guideline: "Leitlinie",
       show: "Anzeigen",
-      show_name: "Name",
+      show_title: "Titel",
       show_icon: "Symbol",
       show_state: "Letzter Wert",
       show_category: "Kategorie der letzten Messung",
@@ -815,13 +911,14 @@
       show_pulse: "Puls",
       show_scales: "Skalen für die letzte Messung",
       show_chart: "Diagramm",
-      show_legend: "Kategorien unter dem Diagramm"
+      show_legend: "Kategorien unter dem Diagramm",
+      colors: "Farben",
+      show_parts: ""
     },
     helper: {
       pulse: "Optional.",
       days_to_show: "Der Recorder speichert standardmäßig 10 Tage.",
-      guideline: "Bestimmt die Kategorie und die Farbe jeder Messung.",
-      show_pulse: "Der letzte Puls und eine Pulslinie unter dem Diagramm."
+      guideline: "Bestimmt die Kategorie und die Farbe jeder Messung."
     },
     chart_type: {
       bars: "Balken (Standard)",
@@ -829,7 +926,8 @@
       daily: "Tagesdurchschnitte",
       split: "Getrennte Diagramme",
       calendar: "Kalender",
-      pie: "Kreisdiagramm"
+      pie: "Kreisdiagramm",
+      gauge: "Messanzeigen"
     },
     guideline: {
       esc_2024: "ESC 2024, Europa (Standard)",
@@ -852,7 +950,7 @@
       crisis: "Hypertensive Krise"
     },
     text: {
-      name: "Blutdruck",
+      title: "Blutdruck",
       pulse: "Puls {pulse}",
       average: "Durchschnitt {systolic}/{diastolic} aus {count} Messungen",
       average_one: "Durchschnitt {systolic}/{diastolic} aus 1 Messung",
@@ -881,7 +979,7 @@
       days_to_show: "Days to show",
       guideline: "Guideline",
       show: "Show",
-      show_name: "Name",
+      show_title: "Title",
       show_icon: "Icon",
       show_state: "Latest value",
       show_category: "Category of the latest reading",
@@ -889,13 +987,14 @@
       show_pulse: "Pulse",
       show_scales: "Scales for the latest reading",
       show_chart: "Chart",
-      show_legend: "Categories below the chart"
+      show_legend: "Categories below the chart",
+      colors: "Colors",
+      show_parts: ""
     },
     helper: {
       pulse: "Optional.",
       days_to_show: "The recorder keeps 10 days by default.",
-      guideline: "Decides the category and the color of each reading.",
-      show_pulse: "The latest pulse, and a pulse line below the chart."
+      guideline: "Decides the category and the color of each reading."
     },
     chart_type: {
       bars: "Bars (default)",
@@ -903,7 +1002,8 @@
       daily: "Daily averages",
       split: "Separate charts",
       calendar: "Calendar",
-      pie: "Pie chart"
+      pie: "Pie chart",
+      gauge: "Gauges"
     },
     guideline: {
       esc_2024: "ESC 2024, Europe (default)",
@@ -926,7 +1026,7 @@
       crisis: "Hypertensive crisis"
     },
     text: {
-      name: "Blood pressure",
+      title: "Blood pressure",
       pulse: "Pulse {pulse}",
       average: "average {systolic}/{diastolic} of {count} readings",
       average_one: "average {systolic}/{diastolic} of 1 reading",
@@ -955,7 +1055,7 @@
       days_to_show: "Días a mostrar",
       guideline: "Guía",
       show: "Mostrar",
-      show_name: "Nombre",
+      show_title: "Título",
       show_icon: "Icono",
       show_state: "Último valor",
       show_category: "Categoría de la última medición",
@@ -963,13 +1063,14 @@
       show_pulse: "Pulso",
       show_scales: "Escalas de la última medición",
       show_chart: "Gráfico",
-      show_legend: "Categorías debajo del gráfico"
+      show_legend: "Categorías debajo del gráfico",
+      colors: "Colores",
+      show_parts: ""
     },
     helper: {
       pulse: "Opcional.",
       days_to_show: "El recorder guarda 10 días de forma predeterminada.",
-      guideline: "Decide la categoría y el color de cada medición.",
-      show_pulse: "El último pulso y una línea de pulso debajo del gráfico."
+      guideline: "Decide la categoría y el color de cada medición."
     },
     chart_type: {
       bars: "Barras (predeterminado)",
@@ -977,7 +1078,8 @@
       daily: "Promedios diarios",
       split: "Gráficos separados",
       calendar: "Calendario",
-      pie: "Gráfico circular"
+      pie: "Gráfico circular",
+      gauge: "Indicadores"
     },
     guideline: {
       esc_2024: "ESC 2024, Europa (predeterminada)",
@@ -1000,7 +1102,7 @@
       crisis: "Crisis hipertensiva"
     },
     text: {
-      name: "Presión arterial",
+      title: "Presión arterial",
       pulse: "Pulso {pulse}",
       average: "promedio {systolic}/{diastolic} de {count} mediciones",
       average_one: "promedio {systolic}/{diastolic} de 1 medición",
@@ -1172,9 +1274,10 @@
 			<text class="axis" x=${RIGHT + 6} y=${area.y(value) + 4}>${value}</text>
 		`
   );
-  var band = (area, [from, to]) => {
+  var band = (area, [from, to], color) => {
     const top = area.y(Math.min(to, area.high));
-    return w`<rect class="normal" x=${LEFT} width=${RIGHT - LEFT} y=${top} height=${Math.max(area.y(Math.max(from, area.low)) - top, 0)}></rect>`;
+    return w`<rect class="normal" x=${LEFT} width=${RIGHT - LEFT} y=${top} height=${Math.max(area.y(Math.max(from, area.low)) - top, 0)}
+		style=${`fill: ${color}`}></rect>`;
   };
   var polyline = (points) => w`<polyline class="line" points=${points.map(([x2, y3]) => `${x2},${y3}`).join(" ")}></polyline>`;
   var fill = (category) => `fill: ${category.color}`;
@@ -1182,7 +1285,7 @@
     const readings = input.readings.filter((reading) => reading.pulse !== void 0);
     const area = valueScale(valuesOf(readings, "pulse"), PULSE_RANGE[0], PULSE_RANGE[1], top, bottom);
     return w`
-		${band(area, PULSE_RANGE)}
+		${band(area, PULSE_RANGE, PULSE_COLORS.usual)}
 		${gridAt(area, PULSE_RANGE)}
 		${polyline(readings.map((reading) => [x2(reading), area.y(reading.pulse)]))}
 		${readings.map((reading) => w`<circle class="pulse" cx=${x2(reading)} cy=${area.y(reading.pulse)} r="3"></circle>`)}
@@ -1208,7 +1311,7 @@
         const top = area.y(reading.systolic);
         return w`<rect x=${x2(reading.time) - width / 2} y=${top} width=${width} rx="2"
 					height=${Math.max(area.y(reading.diastolic) - top, 2)}
-					style=${fill(classify(input.categories, reading.systolic, reading.diastolic))}></rect>`;
+					style=${fill(classify(input.scheme, reading.systolic, reading.diastolic))}></rect>`;
       })}
 			${input.pulse ? pulseArea(input, (reading) => x2(reading.time)) : A}
 			${dates(input, timeChartHeight(input) - 6)}
@@ -1222,13 +1325,13 @@
       const area = valueScale([...valuesOf(input.readings, "systolic"), ...valuesOf(input.readings, "diastolic")], 60, 150, TOP, BOTTOM);
       const line = (axis) => polyline(input.readings.map((reading) => [x2(reading.time), area.y(reading[axis])]));
       return w`
-			${band(area, normalRange(input.categories, "systolic"))}
-			${band(area, normalRange(input.categories, "diastolic"))}
+			${band(area, normalRange(input.scheme, "systolic"), input.scheme.categories[0].color)}
+			${band(area, normalRange(input.scheme, "diastolic"), input.scheme.categories[0].color)}
 			${grid(area, 20)}
 			${line("systolic")}
 			${line("diastolic")}
 			${input.readings.map((reading) => {
-        const style = fill(classify(input.categories, reading.systolic, reading.diastolic));
+        const style = fill(classify(input.scheme, reading.systolic, reading.diastolic));
         return w`
 					<circle cx=${x2(reading.time)} cy=${area.y(reading.systolic)} r="4" style=${style}></circle>
 					<circle cx=${x2(reading.time)} cy=${area.y(reading.diastolic)} r="4" style=${style}></circle>
@@ -1277,12 +1380,12 @@
       const weekday = new Intl.DateTimeFormat(input.language, { weekday: "short", timeZone: "UTC" });
       const labelsY = (input.pulse ? PULSE_BOTTOM : BOTTOM) + 18;
       return w`
-			${band(area, normalRange(input.categories, "systolic"))}
-			${band(area, normalRange(input.categories, "diastolic"))}
+			${band(area, normalRange(input.scheme, "systolic"), input.scheme.categories[0].color)}
+			${band(area, normalRange(input.scheme, "diastolic"), input.scheme.categories[0].color)}
 			${grid(area, 20)}
 			${["systolic", "diastolic"].map((axis) => polyline(withReadings.map(({ index, reading }) => [x2(index), area.y(reading[axis])])))}
 			${withReadings.map(({ index, reading }) => {
-        const style = fill(classify(input.categories, reading.systolic, reading.diastolic));
+        const style = fill(classify(input.scheme, reading.systolic, reading.diastolic));
         return w`
 					${["systolic", "diastolic"].map((axis) => {
           const [low, high] = rangeOf(reading, axis);
@@ -1310,17 +1413,17 @@
       const x2 = timeScale(input);
       const areas = ["systolic", "diastolic"].map((axis, index) => {
         const top = TOP + index * (SPLIT_HEIGHT + SPLIT_GAP);
-        const [low, high] = normalRange(input.categories, axis);
+        const [low, high] = normalRange(input.scheme, axis);
         const area = valueScale(valuesOf(input.readings, axis), low, high, top, top + SPLIT_HEIGHT);
         return w`
-				${band(area, [low, high])}
+				${band(area, [low, high], input.scheme.categories[0].color)}
 				<line class="limit" x1=${LEFT} x2=${RIGHT} y1=${area.y(high)} y2=${area.y(high)}></line>
 				<text class="axis" x=${RIGHT + 6} y=${area.y(high) + 4}>${high}</text>
 				<text class="axis" x=${LEFT} y=${top + 2}>${translate(`text.${axis}`, input.language)}</text>
 				${polyline(input.readings.map((reading) => [x2(reading.time), area.y(reading[axis])]))}
 				${input.readings.map((reading) => {
           const [from, to] = rangeOf(reading, axis);
-          const style = fill(classifyValue(input.categories, axis, reading[axis]));
+          const style = fill(classifyValue(input.scheme, axis, reading[axis]));
           return w`
 						${to > from ? w`<line class="range" x1=${x2(reading.time)} x2=${x2(reading.time)} y1=${area.y(from)} y2=${area.y(to)}></line>` : A}
 						<circle cx=${x2(reading.time)} cy=${area.y(reading[axis])} r="3.5" style=${style}></circle>
@@ -1367,24 +1470,24 @@
         const reading = byDay.get(dayOf(day, "UTC"));
         cells.push(w`
 				<rect class=${reading ? "day" : "day empty"} x=${x2} y=${y3} width=${width} height=${CALENDAR_ROW} rx="6"
-					style=${reading ? fill(classify(input.categories, reading.systolic, reading.diastolic)) : A}></rect>
+					style=${reading ? fill(classify(input.scheme, reading.systolic, reading.diastolic)) : A}></rect>
 				<text class="date" x=${x2 + 8} y=${y3 + 16}>${dayNumber.format(day)}</text>
 			`);
       }
       return cells;
     }
   };
-  var sharesOf = (readings, categories) => [LOW, ...categories].map((category) => ({
+  var sharesOf = (readings, scheme) => [scheme.low, ...scheme.categories].map((category) => ({
     category,
-    count: readings.filter((reading) => classify(categories, reading.systolic, reading.diastolic) === category).length
+    count: readings.filter((reading) => classify(scheme, reading.systolic, reading.diastolic) === category).length
   })).filter((share) => share.count > 0);
   var pie = {
     height: () => 200,
-    draw: ({ readings, categories, language }) => {
+    draw: ({ readings, scheme, language }) => {
       const radius = 72;
       const circumference = 2 * Math.PI * radius;
       let offset = 0;
-      const slices = sharesOf(readings, categories).map(({ category, count }) => {
+      const slices = sharesOf(readings, scheme).map(({ category, count }) => {
         const length = count / readings.length * circumference;
         const slice = w`<circle class="slice" cx=${WIDTH / 2} cy="100" r=${radius}
 				stroke-dasharray=${`${length} ${circumference - length}`} stroke-dashoffset=${-offset}
@@ -1403,53 +1506,13 @@
   };
   var CHARTS = { bars, lines, daily, split, calendar, pie };
 
-  // src/home-assistant.ts
-  var fireEvent = (node, type, detail, options) => {
-    options = options || {};
-    const event = new Event(type, {
-      bubbles: options.bubbles === void 0 ? true : options.bubbles,
-      cancelable: Boolean(options.cancelable),
-      composed: options.composed === void 0 ? true : options.composed
-    });
-    event.detail = detail === null || detail === void 0 ? {} : detail;
-    node.dispatchEvent(event);
-    return event;
-  };
-  var DISPLAY_KEYS = ["connected", "themes", "locale", "localize"];
-  var hasHassChanged = (old, hass, entityIds) => !old || DISPLAY_KEYS.some((key) => old[key] !== hass[key]) || old.config.state !== hass.config.state || old.config.time_zone !== hass.config.time_zone || entityIds.some((entityId) => old.states[entityId] !== hass.states[entityId]);
-  var createEntityNotFoundWarning = (hass, entityId) => hass.config.state !== "NOT_RUNNING" ? hass.localize("ui.panel.lovelace.warning.entity_not_found", { entity: entityId }) : hass.localize("ui.panel.lovelace.warning.starting");
-  var loading = /* @__PURE__ */ new Map();
-  var loadOnce = (key, tags, load) => {
-    let promise = loading.get(key);
-    if (!promise) {
-      promise = (async () => {
-        if (!tags.every((tag) => customElements.get(tag))) {
-          await load();
-          await Promise.all(tags.map((tag) => customElements.whenDefined(tag)));
-        }
-      })();
-      promise.catch(() => loading.delete(key));
-      loading.set(key, promise);
-    }
-    return promise;
-  };
-  var loadCardElements = () => loadOnce("card", ["hui-warning"], async () => {
-    (await window.loadCardHelpers()).createCardElement({ type: "entity", entity: "sun.sun" });
-  });
-  var loadEditorElements = () => loadOnce("editor", ["ha-form"], async () => {
-    (await window.loadCardHelpers()).createCardElement({ type: "entities", entities: [] });
-    await customElements.whenDefined("hui-entities-card");
-    const card = customElements.get("hui-entities-card");
-    await card.getConfigElement();
-  });
-
   // src/validators.ts
   function validateEditorConfig(config) {
     if (!config || typeof config !== "object") {
       throw new Error("The settings must be a map.");
     }
     const values = config;
-    for (const key of ["systolic", "diastolic", "pulse", "name"]) {
+    for (const key of ["systolic", "diastolic", "pulse", "title"]) {
       if (isSet(values[key]) && typeof values[key] !== "string") {
         throw new Error(`${key} must be text.`);
       }
@@ -1462,6 +1525,9 @@
     }
     if (isSet(values.days_to_show) && !(typeof values.days_to_show === "number" && values.days_to_show > 0)) {
       throw new Error("days_to_show must be a number above 0.");
+    }
+    if (isSet(values.colors) && (typeof values.colors !== "object" || Array.isArray(values.colors) || Object.values(values.colors).some((color) => isSet(color) && typeof color !== "string"))) {
+      throw new Error("colors must be a map from a category to a color, like elevated: amber.");
     }
     for (const key of SHOW_KEYS) {
       if (isSet(values[key]) && typeof values[key] !== "boolean") {
@@ -1488,7 +1554,7 @@
     }
   });
   var sensorSelector = (unit) => ({ entity: { filter: { domain: "sensor", unit_of_measurement: unit } } });
-  var buildSchema = (language) => [
+  var buildSchema = (language, guideline) => [
     { name: "systolic", required: true, selector: sensorSelector("mmHg") },
     { name: "diastolic", required: true, selector: sensorSelector("mmHg") },
     { name: "pulse", selector: sensorSelector("bpm") },
@@ -1499,7 +1565,7 @@
       expanded: true,
       icon: "mdi:chart-bar",
       schema: [
-        { name: "name", selector: { text: {} } },
+        { name: "title", selector: { text: {} } },
         { name: "chart_type", selector: selectSelector(CHART_TYPES, "chart_type", language) },
         {
           name: "",
@@ -1516,13 +1582,30 @@
       type: "expandable",
       flatten: true,
       icon: "mdi:eye-outline",
+      // One list of check boxes, closer together than a toggle per part. The
+      // saved YAML keeps a show_ setting per part.
       schema: [
         {
-          name: "",
-          type: "grid",
-          schema: SHOW_KEYS.map((key) => ({ name: key, selector: { boolean: {} } }))
+          name: "show_parts",
+          selector: {
+            select: {
+              multiple: true,
+              mode: "list",
+              options: SHOW_KEYS.map((key) => ({ value: key, label: translate(`label.${key}`, language) }))
+            }
+          }
         }
       ]
+    },
+    {
+      // Not flattened: the colors go into their own map, colors: in the YAML.
+      name: "colors",
+      type: "expandable",
+      icon: "mdi:palette-outline",
+      schema: categoriesOf(guideline).map((category) => ({
+        name: category.key,
+        selector: { ui_color: { default_color: category.color } }
+      }))
     }
   ];
   var __ready_dec, __config_dec, _hass_dec, _a, _init, _hass, __config, __ready;
@@ -1532,14 +1615,16 @@
       __privateAdd(this, _hass, __runInitializers(_init, 8, this)), __runInitializers(_init, 11, this);
       __privateAdd(this, __config, __runInitializers(_init, 12, this)), __runInitializers(_init, 15, this);
       __privateAdd(this, __ready, __runInitializers(_init, 16, this, false)), __runInitializers(_init, 19, this);
-      __publicField(this, "_schemaLanguage");
+      __publicField(this, "_schemaKey");
       __publicField(this, "_schema");
       // The card's own texts, else Home Assistant's labels for its generic
       // fields, like its form editor for cards does.
       __publicField(this, "_computeLabel", (schema) => {
-        const key = `label.${schema.name}`;
-        if (hasTranslation(key)) {
-          return translate(key, languageOf(this.hass));
+        const language = languageOf(this.hass);
+        for (const key of [`label.${schema.name}`, `category.${schema.name}`]) {
+          if (hasTranslation(key)) {
+            return translate(key, language);
+          }
         }
         return this.hass.localize(`ui.panel.lovelace.editor.card.generic.${schema.name}`);
       });
@@ -1567,14 +1652,19 @@
         return A;
       }
       const language = languageOf(this.hass);
-      if (language !== this._schemaLanguage) {
-        this._schemaLanguage = language;
-        this._schema = buildSchema(language);
+      const guideline = this._config.guideline ?? "esc_2024";
+      if (`${language} ${guideline}` !== this._schemaKey) {
+        this._schemaKey = `${language} ${guideline}`;
+        this._schema = buildSchema(language, guideline);
       }
       return b2`
 			<ha-form
 				.hass=${this.hass}
-				.data=${{ ...DEFAULTS, ...this._config }}
+				.data=${{
+        ...DEFAULTS,
+        ...this._config,
+        show_parts: SHOW_KEYS.filter((key) => shows(this._config, key))
+      }}
 				.schema=${this._schema}
 				.computeLabel=${this._computeLabel}
 				.computeHelper=${this._computeHelper}
@@ -1586,9 +1676,18 @@
     // only holds what differs from them.
     _valueChanged(ev) {
       ev.stopPropagation();
-      const config = Object.fromEntries(
-        Object.entries(ev.detail.value).filter(([key, value]) => DEFAULTS[key] !== value)
-      );
+      const { show_parts: parts = [], ...value } = ev.detail.value;
+      for (const key of SHOW_KEYS) {
+        value[key] = parts.includes(key);
+      }
+      const config = Object.fromEntries(Object.entries(value).filter(([key, item]) => DEFAULTS[key] !== item));
+      const own = Object.fromEntries(categoriesOf(config.guideline ?? "esc_2024").map((category) => [category.key, category.color]));
+      const colors = Object.entries(config.colors ?? {}).filter(([key, color]) => color && own[key] !== color);
+      if (colors.length) {
+        config.colors = Object.fromEntries(colors);
+      } else {
+        delete config.colors;
+      }
       fireEvent(this, "config-changed", { config });
     }
   };
@@ -1630,7 +1729,6 @@
   // src/blood-pressure-card.ts
   var CARD_TAG = "blood-pressure";
   var DAY_MS2 = 24 * 3600 * 1e3;
-  var SCALE_LIMITS = { systolic: [70, 200], diastolic: [40, 130] };
   var numberOf = (stateObj) => {
     const value = stateObj.state === "" ? NaN : Number(stateObj.state);
     return Number.isFinite(value) ? value : void 0;
@@ -1669,7 +1767,7 @@
     }
     connectedCallback() {
       super.connectedCallback();
-      loadCardElements().then(
+      Promise.all([loadCardElements(), loadGaugeElements()]).then(
         () => {
           this._ready = true;
         },
@@ -1727,13 +1825,13 @@
       if (missing) {
         return b2`<hui-warning .hass=${hass}>${createEntityNotFoundWarning(hass, missing)}</hui-warning>`;
       }
-      const categories = GUIDELINES[config.guideline ?? "esc_2024"];
+      const scheme = schemeOf(config.guideline ?? "esc_2024", config.colors);
       const systolicState = hass.states[config.systolic];
       const systolic = numberOf(systolicState);
       const diastolic = numberOf(hass.states[config.diastolic]);
       const pulseState = config.pulse ? hass.states[config.pulse] : void 0;
       const pulse = pulseState ? numberOf(pulseState) : void 0;
-      const category = systolic !== void 0 && diastolic !== void 0 ? classify(categories, systolic, diastolic) : void 0;
+      const category = systolic !== void 0 && diastolic !== void 0 ? classify(scheme, systolic, diastolic) : void 0;
       const readings = this._readings ?? [];
       const average = averageOf(readings);
       const range = (axis) => {
@@ -1753,12 +1851,12 @@
         }) : ""
       ].filter(Boolean).join(", ");
       const ranges = showAverage && !scales ? translate("text.ranges", language, { systolic: range("systolic"), diastolic: range("diastolic") }) : "";
-      const header = shows(config, "show_name") || shows(config, "show_icon");
+      const header = shows(config, "show_title") || shows(config, "show_icon");
       const categoryShown = shows(config, "show_category") && category;
       return b2`
 			<ha-card>
 				${header ? b2`<div class="header">
-							<div class="name">${shows(config, "show_name") ? config.name || translate("text.name", language) : A}</div>
+							<div class="name">${shows(config, "show_title") ? config.title || translate("text.title", language) : A}</div>
 							${shows(config, "show_icon") ? b2`<div class="icon"><ha-icon icon="mdi:heart-pulse"></ha-icon></div>` : A}
 						</div>` : A}
 				${shows(config, "show_state") || categoryShown ? b2`<div class="info">
@@ -1774,18 +1872,18 @@
 							${[details, ranges].filter(Boolean).map((line) => b2`<div>${line.charAt(0).toUpperCase()}${line.slice(1)}</div>`)}
 						</div>` : A}
 				${scales ? b2`<div class="scales">
-							${this._renderScale(categories, "systolic", systolic, range("systolic"), language)}
-							${this._renderScale(categories, "diastolic", diastolic, range("diastolic"), language)}
+							${this._renderScale(scheme, "systolic", systolic, range("systolic"), language)}
+							${this._renderScale(scheme, "diastolic", diastolic, range("diastolic"), language)}
 						</div>` : A}
-				${this._renderChart(hass, config, categories, language)}
+				${this._renderChart(hass, config, scheme, language)}
 			</ha-card>
 		`;
     }
     // A bar with the categories one value can reach, a mark at the value, and
     // the lowest and the highest value of the period after it.
-    _renderScale(categories, axis, value, range, language) {
+    _renderScale(scheme, axis, value, range, language) {
       const [min, max] = SCALE_LIMITS[axis];
-      const steps = scaleOf(categories, axis);
+      const steps = scaleOf(scheme, axis);
       const at = (limit) => Math.min(Math.max(limit, min), max);
       return b2`
 			<span>${translate(`text.${axis}`, language)}</span>
@@ -1798,9 +1896,53 @@
 			<span class="range-text">${shows(this._config, "show_average") ? range : A}</span>
 		`;
     }
-    _renderChart(hass, config, categories, language) {
+    // Home Assistant's gauge with one segment per category and the needle at the
+    // category of the latest reading, like its gauge card in needle mode. The
+    // gauge names the category the needle points at, the reading shows below.
+    _renderGauge(hass, config, scheme, language, showChart) {
+      const systolic = numberOf(hass.states[config.systolic]);
+      const diastolic = numberOf(hass.states[config.diastolic]);
+      const known = systolic !== void 0 && diastolic !== void 0;
+      const all = [scheme.low, ...scheme.categories];
+      const levels = all.map((category, index) => ({
+        level: index,
+        stroke: category.color,
+        // Without a reading the gauge names no category.
+        label: known ? translate(`category.${category.key}`, language) : void 0
+      }));
+      const unit = hass.states[config.systolic].attributes.unit_of_measurement ?? "mmHg";
+      return b2`
+			${showChart ? b2`<div class="gauges">
+						<div class="gauge">
+							<ha-gauge
+								.min=${0}
+								.max=${all.length}
+								.value=${known ? positionOf(scheme, systolic, diastolic) : 0}
+								.valueText=${known ? "" : "-"}
+								.locale=${hass.locale}
+								.needle=${true}
+								.levels=${levels}
+							></ha-gauge>
+							<p class="title">
+								${known ? `${Math.round(systolic)}/${Math.round(diastolic)} ${unit}` : hass.localize("state.default.unavailable")}
+							</p>
+						</div>
+					</div>` : A}
+			${shows(config, "show_legend") ? b2`<div class="legend">
+						${[scheme.low, ...scheme.categories].map(
+        (category) => b2`<span style=${`--category-color: ${category.color}`}>
+								<i></i>${translate(`category.${category.key}`, language)}
+							</span>`
+      )}
+					</div>` : b2`<div class="end"></div>`}
+		`;
+    }
+    _renderChart(hass, config, scheme, language) {
       const days = config.days_to_show ?? DEFAULT_DAYS;
       const showChart = shows(config, "show_chart");
+      if ((config.chart_type ?? "bars") === "gauge") {
+        return this._renderGauge(hass, config, scheme, language, showChart);
+      }
       if (this._failed) {
         return showChart ? b2`<div class="message">${translate("text.no_history", language)}</div>` : b2`<div class="end"></div>`;
       }
@@ -1813,16 +1955,16 @@
       const end = Date.now();
       const input = {
         readings: this._readings,
-        categories,
+        scheme,
         start: end - days * DAY_MS2,
         end,
         pulse: Boolean(config.pulse) && shows(config, "show_pulse") && this._readings.some((reading) => reading.pulse !== void 0),
         language,
         timeZone: hass.locale.time_zone === "server" ? hass.config.time_zone : void 0
       };
-      const type = config.chart_type ?? "bars";
+      const type = config.chart_type === void 0 || config.chart_type === "gauge" ? "bars" : config.chart_type;
       const chart = CHARTS[type];
-      const shares = sharesOf(this._readings, categories);
+      const shares = sharesOf(this._readings, scheme);
       return b2`
 			${showChart ? b2`<svg viewBox=${`0 0 ${WIDTH} ${chart.height(input)}`}>${chart.draw(input)}</svg>` : A}
 			${shows(config, "show_legend") ? b2`<div class="legend">
@@ -1976,7 +2118,6 @@
 			font-size: 11px;
 		}
 		.normal {
-			fill: var(--green-color, #4caf50);
 			opacity: 0.12;
 		}
 		.line {
@@ -2018,6 +2159,37 @@
 		.message {
 			padding: 0 16px 16px;
 			color: var(--secondary-text-color);
+		}
+		/* Added: the gauges side by side. The rules of the gauge and its title
+		   copy Home Assistant's gauge card (src/panels/lovelace/cards/hui-gauge-card.ts). */
+		.gauges {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+			gap: 8px;
+			padding: 8px 16px 0;
+		}
+		.gauge {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			min-width: 0;
+		}
+		ha-gauge {
+			width: 100%;
+			max-width: 250px;
+		}
+		.gauge .title {
+			width: 100%;
+			font-size: var(--ha-font-size-m);
+			line-height: var(--ha-line-height-expanded);
+			margin: 0;
+			text-align: center;
+			box-sizing: border-box;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+			flex: none;
+			color: var(--primary-text-color);
 		}
 		/* Added: the bottom padding of the card when there is no legend. */
 		.end {

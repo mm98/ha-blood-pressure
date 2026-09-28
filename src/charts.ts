@@ -3,7 +3,7 @@
 
 import { nothing, svg, type SVGTemplateResult } from "lit";
 import { type ChartType, PULSE_RANGE } from "./config";
-import { type Category, classify, classifyValue, LOW, normalRange } from "./guidelines";
+import { type Category, classify, classifyValue, normalRange, PULSE_COLORS, type Scheme } from "./guidelines";
 import { translate } from "./i18n";
 import { averageReading, rangeOf, type Reading } from "./readings";
 
@@ -11,7 +11,8 @@ export const WIDTH = 500;
 
 export interface ChartInput {
 	readings: Reading[];
-	categories: Category[];
+	// The categories of the guideline, with the colors to draw with.
+	scheme: Scheme;
 	// The period of the chart, in milliseconds since the epoch.
 	start: number;
 	end: number;
@@ -83,10 +84,11 @@ const gridAt = (area: Scale, values: number[]): SVGTemplateResult[] =>
 		`,
 	);
 
-// A faded band between two values.
-const band = (area: Scale, [from, to]: [number, number]): SVGTemplateResult => {
+// A faded band between two values, in the color of what it stands for.
+const band = (area: Scale, [from, to]: [number, number], color: string): SVGTemplateResult => {
 	const top = area.y(Math.min(to, area.high));
-	return svg`<rect class="normal" x=${LEFT} width=${RIGHT - LEFT} y=${top} height=${Math.max(area.y(Math.max(from, area.low)) - top, 0)}></rect>`;
+	return svg`<rect class="normal" x=${LEFT} width=${RIGHT - LEFT} y=${top} height=${Math.max(area.y(Math.max(from, area.low)) - top, 0)}
+		style=${`fill: ${color}`}></rect>`;
 };
 
 const polyline = (points: [number, number][]): SVGTemplateResult =>
@@ -99,7 +101,7 @@ const pulseArea = (input: ChartInput, x: (reading: Reading) => number, top = PUL
 	const readings = input.readings.filter((reading) => reading.pulse !== undefined);
 	const area = valueScale(valuesOf(readings, "pulse"), PULSE_RANGE[0], PULSE_RANGE[1], top, bottom);
 	return svg`
-		${band(area, PULSE_RANGE)}
+		${band(area, PULSE_RANGE, PULSE_COLORS.usual)}
 		${gridAt(area, PULSE_RANGE)}
 		${polyline(readings.map((reading) => [x(reading), area.y(reading.pulse!)]))}
 		${readings.map((reading) => svg`<circle class="pulse" cx=${x(reading)} cy=${area.y(reading.pulse!)} r="3"></circle>`)}
@@ -131,7 +133,7 @@ const bars: Chart = {
 				const top = area.y(reading.systolic);
 				return svg`<rect x=${x(reading.time) - width / 2} y=${top} width=${width} rx="2"
 					height=${Math.max(area.y(reading.diastolic) - top, 2)}
-					style=${fill(classify(input.categories, reading.systolic, reading.diastolic))}></rect>`;
+					style=${fill(classify(input.scheme, reading.systolic, reading.diastolic))}></rect>`;
 			})}
 			${input.pulse ? pulseArea(input, (reading) => x(reading.time)) : nothing}
 			${dates(input, timeChartHeight(input) - 6)}
@@ -148,13 +150,13 @@ const lines: Chart = {
 		const area = valueScale([...valuesOf(input.readings, "systolic"), ...valuesOf(input.readings, "diastolic")], 60, 150, TOP, BOTTOM);
 		const line = (axis: "systolic" | "diastolic") => polyline(input.readings.map((reading) => [x(reading.time), area.y(reading[axis])]));
 		return svg`
-			${band(area, normalRange(input.categories, "systolic"))}
-			${band(area, normalRange(input.categories, "diastolic"))}
+			${band(area, normalRange(input.scheme, "systolic"), input.scheme.categories[0].color)}
+			${band(area, normalRange(input.scheme, "diastolic"), input.scheme.categories[0].color)}
 			${grid(area, 20)}
 			${line("systolic")}
 			${line("diastolic")}
 			${input.readings.map((reading) => {
-				const style = fill(classify(input.categories, reading.systolic, reading.diastolic));
+				const style = fill(classify(input.scheme, reading.systolic, reading.diastolic));
 				return svg`
 					<circle cx=${x(reading.time)} cy=${area.y(reading.systolic)} r="4" style=${style}></circle>
 					<circle cx=${x(reading.time)} cy=${area.y(reading.diastolic)} r="4" style=${style}></circle>
@@ -217,12 +219,12 @@ const daily: Chart = {
 		const weekday = new Intl.DateTimeFormat(input.language, { weekday: "short", timeZone: "UTC" });
 		const labelsY = (input.pulse ? PULSE_BOTTOM : BOTTOM) + 18;
 		return svg`
-			${band(area, normalRange(input.categories, "systolic"))}
-			${band(area, normalRange(input.categories, "diastolic"))}
+			${band(area, normalRange(input.scheme, "systolic"), input.scheme.categories[0].color)}
+			${band(area, normalRange(input.scheme, "diastolic"), input.scheme.categories[0].color)}
 			${grid(area, 20)}
 			${(["systolic", "diastolic"] as const).map((axis) => polyline(withReadings.map(({ index, reading }) => [x(index), area.y(reading[axis])])))}
 			${withReadings.map(({ index, reading }) => {
-				const style = fill(classify(input.categories, reading.systolic, reading.diastolic));
+				const style = fill(classify(input.scheme, reading.systolic, reading.diastolic));
 				return svg`
 					${(["systolic", "diastolic"] as const).map((axis) => {
 						const [low, high] = rangeOf(reading, axis)!;
@@ -257,17 +259,17 @@ const split: Chart = {
 		const x = timeScale(input);
 		const areas = (["systolic", "diastolic"] as const).map((axis, index) => {
 			const top = TOP + index * (SPLIT_HEIGHT + SPLIT_GAP);
-			const [low, high] = normalRange(input.categories, axis);
+			const [low, high] = normalRange(input.scheme, axis);
 			const area = valueScale(valuesOf(input.readings, axis), low, high, top, top + SPLIT_HEIGHT);
 			return svg`
-				${band(area, [low, high])}
+				${band(area, [low, high], input.scheme.categories[0].color)}
 				<line class="limit" x1=${LEFT} x2=${RIGHT} y1=${area.y(high)} y2=${area.y(high)}></line>
 				<text class="axis" x=${RIGHT + 6} y=${area.y(high) + 4}>${high}</text>
 				<text class="axis" x=${LEFT} y=${top + 2}>${translate(`text.${axis}`, input.language)}</text>
 				${polyline(input.readings.map((reading) => [x(reading.time), area.y(reading[axis])]))}
 				${input.readings.map((reading) => {
 					const [from, to] = rangeOf(reading, axis)!;
-					const style = fill(classifyValue(input.categories, axis, reading[axis]));
+					const style = fill(classifyValue(input.scheme, axis, reading[axis]));
 					return svg`
 						${to > from ? svg`<line class="range" x1=${x(reading.time)} x2=${x(reading.time)} y1=${area.y(from)} y2=${area.y(to)}></line>` : nothing}
 						<circle cx=${x(reading.time)} cy=${area.y(reading[axis])} r="3.5" style=${style}></circle>
@@ -321,7 +323,7 @@ const calendar: Chart = {
 			const reading = byDay.get(dayOf(day, "UTC"));
 			cells.push(svg`
 				<rect class=${reading ? "day" : "day empty"} x=${x} y=${y} width=${width} height=${CALENDAR_ROW} rx="6"
-					style=${reading ? fill(classify(input.categories, reading.systolic, reading.diastolic)) : nothing}></rect>
+					style=${reading ? fill(classify(input.scheme, reading.systolic, reading.diastolic)) : nothing}></rect>
 				<text class="date" x=${x + 8} y=${y + 16}>${dayNumber.format(day)}</text>
 			`);
 		}
@@ -335,22 +337,22 @@ export interface Share {
 }
 
 // How many readings fell in each category, from low to the highest.
-export const sharesOf = (readings: Reading[], categories: Category[]): Share[] =>
-	[LOW, ...categories]
+export const sharesOf = (readings: Reading[], scheme: Scheme): Share[] =>
+	[scheme.low, ...scheme.categories]
 		.map((category) => ({
 			category,
-			count: readings.filter((reading) => classify(categories, reading.systolic, reading.diastolic) === category).length,
+			count: readings.filter((reading) => classify(scheme, reading.systolic, reading.diastolic) === category).length,
 		}))
 		.filter((share) => share.count > 0);
 
 // A ring with the share of each category, and the number of readings inside.
 const pie: Chart = {
 	height: () => 200,
-	draw: ({ readings, categories, language }) => {
+	draw: ({ readings, scheme, language }) => {
 		const radius = 72;
 		const circumference = 2 * Math.PI * radius;
 		let offset = 0;
-		const slices = sharesOf(readings, categories).map(({ category, count }) => {
+		const slices = sharesOf(readings, scheme).map(({ category, count }) => {
 			const length = (count / readings.length) * circumference;
 			const slice = svg`<circle class="slice" cx=${WIDTH / 2} cy="100" r=${radius}
 				stroke-dasharray=${`${length} ${circumference - length}`} stroke-dashoffset=${-offset}
@@ -368,4 +370,5 @@ const pie: Chart = {
 	},
 };
 
-export const CHARTS: Record<ChartType, Chart> = { bars, lines, daily, split, calendar, pie };
+// The gauges are Home Assistant's own gauge elements, drawn by the card.
+export const CHARTS: Record<Exclude<ChartType, "gauge">, Chart> = { bars, lines, daily, split, calendar, pie };

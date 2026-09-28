@@ -11,7 +11,7 @@
 		"days_to_show": "Antal dage",
 		"guideline": "Retningslinje",
 		"show": "Vis",
-		"show_name": "Navn",
+		"show_title": "Titel",
 		"show_icon": "Ikon",
 		"show_state": "Seneste værdi",
 		"show_category": "Kategori for seneste måling",
@@ -19,13 +19,14 @@
 		"show_pulse": "Puls",
 		"show_scales": "Skalaer for seneste måling",
 		"show_chart": "Diagram",
-		"show_legend": "Kategorier under diagrammet"
+		"show_legend": "Kategorier under diagrammet",
+		"colors": "Farver",
+		"show_parts": ""
 	},
 	"helper": {
 		"pulse": "Valgfri.",
 		"days_to_show": "Recorder gemmer som standard 10 dage.",
-		"guideline": "Bestemmer kategorien og farven for hver måling.",
-		"show_pulse": "Seneste puls og en pulslinje under diagrammet."
+		"guideline": "Bestemmer kategorien og farven for hver måling."
 	},
 	"chart_type": {
 		"bars": "Søjler (standard)",
@@ -33,7 +34,8 @@
 		"daily": "Gennemsnit pr. dag",
 		"split": "Separate diagrammer",
 		"calendar": "Kalender",
-		"pie": "Cirkeldiagram"
+		"pie": "Cirkeldiagram",
+		"gauge": "Målere"
 	},
 	"guideline": {
 		"esc_2024": "ESC 2024, Europa (standard)",
@@ -56,7 +58,7 @@
 		"crisis": "Hypertensiv krise"
 	},
 	"text": {
-		"name": "Blodtryk",
+		"title": "Blodtryk",
 		"pulse": "Puls {pulse}",
 		"average": "gennemsnit {systolic}/{diastolic} af {count} målinger",
 		"average_one": "gennemsnit {systolic}/{diastolic} af 1 måling",

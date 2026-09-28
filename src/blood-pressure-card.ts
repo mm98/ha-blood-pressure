@@ -6,13 +6,15 @@ import { property, state } from "lit/decorators.js";
 import { CHARTS, type ChartInput, sharesOf, WIDTH } from "./charts";
 import { type BloodPressureConfig, DEFAULT_DAYS, shows } from "./config";
 import { EDITOR_TAG } from "./blood-pressure-editor";
-import { classify, GUIDELINES, scaleOf } from "./guidelines";
+import { classify, positionOf, SCALE_LIMITS, scaleOf, type Scheme, schemeOf } from "./guidelines";
 import {
 	createEntityNotFoundWarning,
 	hasHassChanged,
 	type HassEntity,
 	type HomeAssistant,
+	type LevelDefinition,
 	loadCardElements,
+	loadGaugeElements,
 	type LovelaceCard,
 	type LovelaceCardConfig,
 	type LovelaceCardEditor,
@@ -27,8 +29,6 @@ export const CARD_TAG = "blood-pressure";
 
 const DAY_MS = 24 * 3600 * 1000;
 
-// Where the scales of the latest reading start and end, in mmHg.
-const SCALE_LIMITS = { systolic: [70, 200], diastolic: [40, 130] } as const;
 
 const numberOf = (stateObj: HassEntity): number | undefined => {
 	const value = stateObj.state === "" ? NaN : Number(stateObj.state);
@@ -165,7 +165,6 @@ export class BloodPressureCard extends LitElement implements LovelaceCard {
 			font-size: 11px;
 		}
 		.normal {
-			fill: var(--green-color, #4caf50);
 			opacity: 0.12;
 		}
 		.line {
@@ -208,6 +207,37 @@ export class BloodPressureCard extends LitElement implements LovelaceCard {
 			padding: 0 16px 16px;
 			color: var(--secondary-text-color);
 		}
+		/* Added: the gauges side by side. The rules of the gauge and its title
+		   copy Home Assistant's gauge card (src/panels/lovelace/cards/hui-gauge-card.ts). */
+		.gauges {
+			display: grid;
+			grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+			gap: 8px;
+			padding: 8px 16px 0;
+		}
+		.gauge {
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			min-width: 0;
+		}
+		ha-gauge {
+			width: 100%;
+			max-width: 250px;
+		}
+		.gauge .title {
+			width: 100%;
+			font-size: var(--ha-font-size-m);
+			line-height: var(--ha-line-height-expanded);
+			margin: 0;
+			text-align: center;
+			box-sizing: border-box;
+			overflow: hidden;
+			text-overflow: ellipsis;
+			white-space: nowrap;
+			flex: none;
+			color: var(--primary-text-color);
+		}
 		/* Added: the bottom padding of the card when there is no legend. */
 		.end {
 			height: 16px;
@@ -237,7 +267,7 @@ export class BloodPressureCard extends LitElement implements LovelaceCard {
 
 	@state() private accessor _config: BloodPressureConfig | undefined;
 
-	// Home Assistant's warning is loaded.
+	// Home Assistant's warning and gauge are loaded.
 	@state() private accessor _ready = false;
 
 	// Undefined while the history is read.
@@ -275,7 +305,7 @@ export class BloodPressureCard extends LitElement implements LovelaceCard {
 
 	override connectedCallback(): void {
 		super.connectedCallback();
-		loadCardElements().then(
+		Promise.all([loadCardElements(), loadGaugeElements()]).then(
 			() => {
 				this._ready = true;
 			},
@@ -343,13 +373,13 @@ export class BloodPressureCard extends LitElement implements LovelaceCard {
 		if (missing) {
 			return html`<hui-warning .hass=${hass}>${createEntityNotFoundWarning(hass, missing)}</hui-warning>`;
 		}
-		const categories = GUIDELINES[config.guideline ?? "esc_2024"];
+		const scheme = schemeOf(config.guideline ?? "esc_2024", config.colors);
 		const systolicState = hass.states[config.systolic];
 		const systolic = numberOf(systolicState);
 		const diastolic = numberOf(hass.states[config.diastolic]);
 		const pulseState = config.pulse ? hass.states[config.pulse] : undefined;
 		const pulse = pulseState ? numberOf(pulseState) : undefined;
-		const category = systolic !== undefined && diastolic !== undefined ? classify(categories, systolic, diastolic) : undefined;
+		const category = systolic !== undefined && diastolic !== undefined ? classify(scheme, systolic, diastolic) : undefined;
 		const readings = this._readings ?? [];
 		const average = averageOf(readings);
 		// The lowest and the highest value of the period, like 104-142.
@@ -380,13 +410,13 @@ export class BloodPressureCard extends LitElement implements LovelaceCard {
 			showAverage && !scales
 				? translate("text.ranges", language, { systolic: range("systolic"), diastolic: range("diastolic") })
 				: "";
-		const header = shows(config, "show_name") || shows(config, "show_icon");
+		const header = shows(config, "show_title") || shows(config, "show_icon");
 		const categoryShown = shows(config, "show_category") && category;
 		return html`
 			<ha-card>
 				${header
 					? html`<div class="header">
-							<div class="name">${shows(config, "show_name") ? config.name || translate("text.name", language) : nothing}</div>
+							<div class="name">${shows(config, "show_title") ? config.title || translate("text.title", language) : nothing}</div>
 							${shows(config, "show_icon") ? html`<div class="icon"><ha-icon icon="mdi:heart-pulse"></ha-icon></div>` : nothing}
 						</div>`
 					: nothing}
@@ -416,11 +446,11 @@ export class BloodPressureCard extends LitElement implements LovelaceCard {
 					: nothing}
 				${scales
 					? html`<div class="scales">
-							${this._renderScale(categories, "systolic", systolic!, range("systolic"), language)}
-							${this._renderScale(categories, "diastolic", diastolic!, range("diastolic"), language)}
+							${this._renderScale(scheme, "systolic", systolic!, range("systolic"), language)}
+							${this._renderScale(scheme, "diastolic", diastolic!, range("diastolic"), language)}
 						</div>`
 					: nothing}
-				${this._renderChart(hass, config, categories, language)}
+				${this._renderChart(hass, config, scheme, language)}
 			</ha-card>
 		`;
 	}
@@ -428,14 +458,14 @@ export class BloodPressureCard extends LitElement implements LovelaceCard {
 	// A bar with the categories one value can reach, a mark at the value, and
 	// the lowest and the highest value of the period after it.
 	private _renderScale(
-		categories: ChartInput["categories"],
+		scheme: Scheme,
 		axis: "systolic" | "diastolic",
 		value: number,
 		range: string,
 		language: string,
 	): TemplateResult {
 		const [min, max] = SCALE_LIMITS[axis];
-		const steps = scaleOf(categories, axis);
+		const steps = scaleOf(scheme, axis);
 		const at = (limit: number) => Math.min(Math.max(limit, min), max);
 		return html`
 			<span>${translate(`text.${axis}`, language)}</span>
@@ -450,14 +480,72 @@ export class BloodPressureCard extends LitElement implements LovelaceCard {
 		`;
 	}
 
+	// Home Assistant's gauge with one segment per category and the needle at the
+	// category of the latest reading, like its gauge card in needle mode. The
+	// gauge names the category the needle points at, the reading shows below.
+	private _renderGauge(
+		hass: HomeAssistant,
+		config: BloodPressureConfig,
+		scheme: Scheme,
+		language: string,
+		showChart: boolean,
+	): TemplateResult {
+		const systolic = numberOf(hass.states[config.systolic]);
+		const diastolic = numberOf(hass.states[config.diastolic]);
+		const known = systolic !== undefined && diastolic !== undefined;
+		const all = [scheme.low, ...scheme.categories];
+		const levels: LevelDefinition[] = all.map((category, index) => ({
+			level: index,
+			stroke: category.color,
+			// Without a reading the gauge names no category.
+			label: known ? translate(`category.${category.key}`, language) : undefined,
+		}));
+		const unit = hass.states[config.systolic].attributes.unit_of_measurement ?? "mmHg";
+		return html`
+			${showChart
+				? html`<div class="gauges">
+						<div class="gauge">
+							<ha-gauge
+								.min=${0}
+								.max=${all.length}
+								.value=${known ? positionOf(scheme, systolic, diastolic) : 0}
+								.valueText=${known ? "" : "-"}
+								.locale=${hass.locale}
+								.needle=${true}
+								.levels=${levels}
+							></ha-gauge>
+							<p class="title">
+								${known
+									? `${Math.round(systolic)}/${Math.round(diastolic)} ${unit}`
+									: hass.localize("state.default.unavailable")}
+							</p>
+						</div>
+					</div>`
+				: nothing}
+			${shows(config, "show_legend")
+				? html`<div class="legend">
+						${[scheme.low, ...scheme.categories].map(
+							(category) => html`<span style=${`--category-color: ${category.color}`}>
+								<i></i>${translate(`category.${category.key}`, language)}
+							</span>`,
+						)}
+					</div>`
+				: html`<div class="end"></div>`}
+		`;
+	}
+
 	private _renderChart(
 		hass: HomeAssistant,
 		config: BloodPressureConfig,
-		categories: ChartInput["categories"],
+		scheme: Scheme,
 		language: string,
 	): TemplateResult | typeof nothing {
 		const days = config.days_to_show ?? DEFAULT_DAYS;
 		const showChart = shows(config, "show_chart");
+		// The gauge shows the latest reading, so it needs no history.
+		if ((config.chart_type ?? "bars") === "gauge") {
+			return this._renderGauge(hass, config, scheme, language, showChart);
+		}
 		if (this._failed) {
 			return showChart ? html`<div class="message">${translate("text.no_history", language)}</div>` : html`<div class="end"></div>`;
 		}
@@ -472,7 +560,7 @@ export class BloodPressureCard extends LitElement implements LovelaceCard {
 		const end = Date.now();
 		const input: ChartInput = {
 			readings: this._readings,
-			categories,
+			scheme,
 			start: end - days * DAY_MS,
 			end,
 			pulse:
@@ -480,9 +568,9 @@ export class BloodPressureCard extends LitElement implements LovelaceCard {
 			language,
 			timeZone: hass.locale.time_zone === "server" ? hass.config.time_zone : undefined,
 		};
-		const type = config.chart_type ?? "bars";
+		const type = config.chart_type === undefined || config.chart_type === "gauge" ? "bars" : config.chart_type;
 		const chart = CHARTS[type];
-		const shares = sharesOf(this._readings, categories);
+		const shares = sharesOf(this._readings, scheme);
 		return html`
 			${showChart ? html`<svg viewBox=${`0 0 ${WIDTH} ${chart.height(input)}`}>${chart.draw(input)}</svg>` : nothing}
 			${shows(config, "show_legend")

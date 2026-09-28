@@ -1,6 +1,6 @@
 # Blood Pressure for Home Assistant
 
-A dashboard card for your blood pressure. It shows your latest reading and its category, the average of the period, and a chart of your readings: as bars, as lines, as daily averages, as separate charts per value, as a calendar or as a pie chart.
+A dashboard card for your blood pressure. It shows your latest reading and its category, the average of the period, and a chart of your readings: as bars, as lines, as daily averages, as separate charts per value, as a calendar, as a pie chart or as a gauge.
 
 The colors follow a blood pressure guideline: the 2024 guidelines of the European Society of Cardiology by default, or the 2018 European or the 2017 American guidelines.
 
@@ -45,9 +45,9 @@ The chart shows the readings that Home Assistant's [recorder](https://www.home-a
 
 Edit a dashboard, select **Add card** and pick **Blood pressure**. The card fills in the blood pressure and pulse sensors it finds. When you pick a blood pressure sensor in the card picker, the card is suggested with its other sensors filled in.
 
-The card's editor has a field for every setting, so YAML is optional. It starts with the sensors, followed by a section for the chart and a section with the parts to show:
+The card's editor has a field for every setting, so YAML is optional. It starts with the sensors, followed by sections for the chart, the parts to show and the colors:
 
-![The card editor with the Withings sensors and the sections Chart and Show](images/editor.png)
+![The card editor with the Withings sensors and the sections Chart, Show and Colors](images/editor.png)
 
 The same card in YAML:
 
@@ -146,9 +146,43 @@ chart_type: pie
 days_to_show: 30
 ```
 
+### Gauge
+
+One gauge with a segment for each category. The needle points at the category of the latest reading, further into the segment the further the reading is into that category. The gauge names the category, the reading shows below it. It needs no history, so it also works for sensors the recorder leaves out.
+
+![A gauge with its needle in the Elevated segment, and 106/71 mmHg below it](images/gauge.png)
+
+```yaml
+type: custom:blood-pressure
+systolic: sensor.withings_systolic_blood_pressure
+diastolic: sensor.withings_diastolic_blood_pressure
+pulse: sensor.withings_heart_pulse
+chart_type: gauge
+show_scales: false
+```
+
+## Colors
+
+Every category has its own color. Pick another one in the editor's **Colors** section, or set it in `colors`: a Home Assistant theme color like `red`, `amber` or `purple`, or any color like `#8e24aa`. Categories you leave out keep their own color. The colors follow your theme.
+
+![The card with orange for Elevated and purple for Hypertension](images/colors.png)
+
+```yaml
+type: custom:blood-pressure
+systolic: sensor.withings_systolic_blood_pressure
+diastolic: sensor.withings_diastolic_blood_pressure
+pulse: sensor.withings_heart_pulse
+chart_type: lines
+colors:
+  elevated: orange
+  hypertension: purple
+```
+
+The categories of each guideline are listed below. Their names in `colors` are `low`, `non_elevated`, `elevated` and `hypertension` for `esc_2024`, `low`, `optimal`, `normal`, `high_normal`, `grade_1`, `grade_2` and `grade_3` for `esc_esh_2018`, and `low`, `normal`, `elevated`, `stage_1`, `stage_2` and `crisis` for `acc_aha_2017`.
+
 ## Fewer parts
 
-Every part of the card can be turned off: the name, the icon, the latest value, its category, the average, the pulse, the scales, the chart and the categories below the chart.
+Every part of the card can be turned off: the title, the icon, the latest value, its category, the average, the pulse, the scales, the chart and the categories below the chart.
 
 ![The card with the latest reading, the average and the lines, without scales, pulse and categories](images/compact.png)
 
@@ -182,17 +216,18 @@ The colors show the category of a reading, not a diagnosis. The targets your doc
 | `systolic` | The sensor with your systolic (upper) value. Required. |
 | `diastolic` | The sensor with your diastolic (lower) value. Required. |
 | `pulse` | The sensor with your pulse. Optional. |
-| `name` | The name at the top of the card. `Blood pressure` by default, in the language of your user profile. |
-| `chart_type` | `bars` (default), `lines`, `daily`, `split`, `calendar` or `pie`. |
+| `title` | The title at the top of the card. `Blood pressure` by default, in the language of your user profile. |
+| `chart_type` | `bars` (default), `lines`, `daily`, `split`, `calendar`, `pie` or `gauge`. |
 | `days_to_show` | How many days the chart and the average cover. 10 by default. |
-| `guideline` | `esc_2024` (default), `esc_esh_2018` or `acc_aha_2017`. See **Guidelines** above. |
-| `show_name`, `show_icon` | The name and the icon at the top. |
+| `guideline` | `esc_2024` (default), `esc_esh_2018` or `acc_aha_2017`. See **Guidelines** below. |
+| `colors` | Another color for some categories, like `elevated: orange`. See **Colors** above. |
+| `show_title`, `show_icon` | The title and the icon at the top. |
 | `show_state` | The latest value. |
 | `show_category` | The category of the latest value. |
 | `show_average` | The average of the period, and the lowest to the highest value. |
 | `show_pulse` | The latest pulse, and the pulse below the chart. Needs `pulse`. |
 | `show_scales` | The scales with the categories of the systolic and the diastolic value, and a mark at the latest value. |
-| `show_chart` | The chart. |
+| `show_chart` | The chart or the gauge. |
 | `show_legend` | The categories below the chart. |
 
 Every `show_` setting is `true` by default. Set it to `false` to leave that part out.

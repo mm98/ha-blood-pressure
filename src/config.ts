@@ -1,9 +1,10 @@
 // The card's config. Optional keys stay optional, and defaults are never
 // written into the saved YAML.
 
+import type { CategoryKey } from "./guidelines";
 import type { LovelaceCardConfig } from "./home-assistant";
 
-export const CHART_TYPES = ["bars", "lines", "daily", "split", "calendar", "pie"] as const;
+export const CHART_TYPES = ["bars", "lines", "daily", "split", "calendar", "pie", "gauge"] as const;
 export type ChartType = (typeof CHART_TYPES)[number];
 
 export const GUIDELINE_IDS = ["esc_2024", "esc_esh_2018", "acc_aha_2017"] as const;
@@ -17,12 +18,15 @@ export interface EditorConfig extends LovelaceCardConfig {
 	systolic?: string;
 	diastolic?: string;
 	pulse?: string;
-	name?: string;
+	title?: string;
 	chart_type?: ChartType;
 	days_to_show?: number;
 	guideline?: GuidelineId;
+	// The color of each category, a Home Assistant theme color like amber or
+	// any CSS color. Categories without one keep their own color.
+	colors?: Partial<Record<CategoryKey, string>>;
 	// Which parts show, each on by default. The pulse needs a pulse sensor.
-	show_name?: boolean;
+	show_title?: boolean;
 	show_icon?: boolean;
 	show_state?: boolean;
 	show_category?: boolean;
@@ -35,7 +39,7 @@ export interface EditorConfig extends LovelaceCardConfig {
 
 // The parts of the card that can be turned off, in the order they show.
 export const SHOW_KEYS = [
-	"show_name",
+	"show_title",
 	"show_icon",
 	"show_state",
 	"show_category",

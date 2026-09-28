@@ -4,7 +4,8 @@
 
 import { html, LitElement, nothing, type TemplateResult } from "lit";
 import { property, state } from "lit/decorators.js";
-import { CHART_TYPES, DEFAULTS, type EditorConfig, GUIDELINE_IDS, SHOW_KEYS } from "./config";
+import { CHART_TYPES, DEFAULTS, type EditorConfig, GUIDELINE_IDS, type GuidelineId, SHOW_KEYS, shows } from "./config";
+import { categoriesOf } from "./guidelines";
 import {
 	fireEvent,
 	type HomeAssistant,
@@ -28,7 +29,7 @@ const selectSelector = (options: readonly string[], group: "chart_type" | "guide
 
 const sensorSelector = (unit: string) => ({ entity: { filter: { domain: "sensor", unit_of_measurement: unit } } });
 
-const buildSchema = (language: string) => [
+const buildSchema = (language: string, guideline: GuidelineId) => [
 	{ name: "systolic", required: true, selector: sensorSelector("mmHg") },
 	{ name: "diastolic", required: true, selector: sensorSelector("mmHg") },
 	{ name: "pulse", selector: sensorSelector("bpm") },
@@ -39,7 +40,7 @@ const buildSchema = (language: string) => [
 		expanded: true,
 		icon: "mdi:chart-bar",
 		schema: [
-			{ name: "name", selector: { text: {} } },
+			{ name: "title", selector: { text: {} } },
 			{ name: "chart_type", selector: selectSelector(CHART_TYPES, "chart_type", language) },
 			{
 				name: "",
@@ -56,13 +57,30 @@ const buildSchema = (language: string) => [
 		type: "expandable",
 		flatten: true,
 		icon: "mdi:eye-outline",
+		// One list of check boxes, closer together than a toggle per part. The
+		// saved YAML keeps a show_ setting per part.
 		schema: [
 			{
-				name: "",
-				type: "grid",
-				schema: SHOW_KEYS.map((key) => ({ name: key, selector: { boolean: {} } })),
+				name: "show_parts",
+				selector: {
+					select: {
+						multiple: true,
+						mode: "list",
+						options: SHOW_KEYS.map((key) => ({ value: key, label: translate(`label.${key}`, language) })),
+					},
+				},
 			},
 		],
+	},
+	{
+		// Not flattened: the colors go into their own map, colors: in the YAML.
+		name: "colors",
+		type: "expandable",
+		icon: "mdi:palette-outline",
+		schema: categoriesOf(guideline).map((category) => ({
+			name: category.key,
+			selector: { ui_color: { default_color: category.color } },
+		})),
 	},
 ];
 
@@ -74,7 +92,7 @@ export class BloodPressureEditor extends LitElement implements LovelaceCardEdito
 	// Home Assistant's form is loaded.
 	@state() private accessor _ready = false;
 
-	private _schemaLanguage?: string;
+	private _schemaKey?: string;
 	private _schema?: ReturnType<typeof buildSchema>;
 
 	setConfig(config: LovelaceCardConfig): void {
@@ -100,16 +118,22 @@ export class BloodPressureEditor extends LitElement implements LovelaceCardEdito
 		if (!this.hass || !this._config || !this._ready) {
 			return nothing;
 		}
-		// The form only changes with the language, so it keeps its state.
+		// The form only changes with the language and the guideline, whose
+		// categories get a color each, so it keeps its state.
 		const language = languageOf(this.hass);
-		if (language !== this._schemaLanguage) {
-			this._schemaLanguage = language;
-			this._schema = buildSchema(language);
+		const guideline = this._config.guideline ?? "esc_2024";
+		if (`${language} ${guideline}` !== this._schemaKey) {
+			this._schemaKey = `${language} ${guideline}`;
+			this._schema = buildSchema(language, guideline);
 		}
 		return html`
 			<ha-form
 				.hass=${this.hass}
-				.data=${{ ...DEFAULTS, ...this._config }}
+				.data=${{
+					...DEFAULTS,
+					...this._config,
+					show_parts: SHOW_KEYS.filter((key) => shows(this._config!, key)),
+				}}
 				.schema=${this._schema}
 				.computeLabel=${this._computeLabel}
 				.computeHelper=${this._computeHelper}
@@ -121,9 +145,11 @@ export class BloodPressureEditor extends LitElement implements LovelaceCardEdito
 	// The card's own texts, else Home Assistant's labels for its generic
 	// fields, like its form editor for cards does.
 	private _computeLabel = (schema: { name: string }): string => {
-		const key = `label.${schema.name}`;
-		if (hasTranslation(key)) {
-			return translate(key, languageOf(this.hass));
+		const language = languageOf(this.hass);
+		for (const key of [`label.${schema.name}`, `category.${schema.name}`]) {
+			if (hasTranslation(key)) {
+				return translate(key, language);
+			}
 		}
 		// ha-form only asks for labels after render, which needs hass.
 		return this.hass!.localize(`ui.panel.lovelace.editor.card.generic.${schema.name}`);
@@ -136,11 +162,21 @@ export class BloodPressureEditor extends LitElement implements LovelaceCardEdito
 
 	// The form holds the defaults too. They are left out, so the saved YAML
 	// only holds what differs from them.
-	private _valueChanged(ev: ValueChangedEvent<EditorConfig>): void {
+	private _valueChanged(ev: ValueChangedEvent<EditorConfig & { show_parts?: string[] }>): void {
 		ev.stopPropagation();
-		const config = Object.fromEntries(
-			Object.entries(ev.detail.value).filter(([key, value]) => DEFAULTS[key] !== value),
-		) as EditorConfig;
+		const { show_parts: parts = [], ...value } = ev.detail.value;
+		for (const key of SHOW_KEYS) {
+			value[key] = parts.includes(key);
+		}
+		const config = Object.fromEntries(Object.entries(value).filter(([key, item]) => DEFAULTS[key] !== item)) as EditorConfig;
+		// The same for the colors: only the ones that differ from a category's own.
+		const own = Object.fromEntries(categoriesOf(config.guideline ?? "esc_2024").map((category) => [category.key, category.color]));
+		const colors = Object.entries(config.colors ?? {}).filter(([key, color]) => color && own[key] !== color);
+		if (colors.length) {
+			config.colors = Object.fromEntries(colors);
+		} else {
+			delete config.colors;
+		}
 		fireEvent(this, "config-changed", { config });
 	}
 }

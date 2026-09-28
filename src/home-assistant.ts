@@ -134,6 +134,48 @@ export interface ValueChangedEvent<T> extends CustomEvent {
 	};
 }
 
+// src/common/color/compute-color.ts
+const THEME_COLORS = new Set([
+	"primary",
+	"accent",
+	"red",
+	"pink",
+	"purple",
+	"deep-purple",
+	"indigo",
+	"blue",
+	"light-blue",
+	"cyan",
+	"teal",
+	"green",
+	"light-green",
+	"lime",
+	"yellow",
+	"amber",
+	"orange",
+	"deep-orange",
+	"brown",
+	"light-grey",
+	"grey",
+	"dark-grey",
+	"blue-grey",
+	"black",
+	"white",
+]);
+
+// src/common/color/compute-color.ts
+const YAML_ONLY_THEMES_COLORS = new Set(["primary-text", "secondary-text", "disabled"]);
+
+// src/common/color/compute-color.ts
+export const computeCssVariableName = (color: string): string =>
+	THEME_COLORS.has(color) || YAML_ONLY_THEMES_COLORS.has(color) ? `--${color}-color` : color;
+
+// src/common/color/compute-color.ts
+export const computeCssColor = (color: string): string => {
+	const cssVarName = computeCssVariableName(color);
+	return cssVarName !== color ? `var(${cssVarName})` : color;
+};
+
 // src/common/dom/fire_event.ts
 export const fireEvent = <HassEvent extends keyof HASSDomEvents>(
 	node: HTMLElement | Window,
@@ -204,6 +246,19 @@ export const loadCardElements = (): Promise<void> =>
 	loadOnce("card", ["hui-warning"], async () => {
 		(await window.loadCardHelpers()).createCardElement({ type: "entity", entity: "sun.sun" });
 	});
+
+// Home Assistant's gauge, through its gauge card.
+export const loadGaugeElements = (): Promise<void> =>
+	loadOnce("gauge", ["ha-gauge"], async () => {
+		(await window.loadCardHelpers()).createCardElement({ type: "gauge", entity: "sun.sun" });
+	});
+
+// src/components/ha-gauge.ts (LevelDefinition)
+export interface LevelDefinition {
+	level: number;
+	stroke: string;
+	label?: string;
+}
 
 // The form of the visual editor, through the entities card's editor.
 export const loadEditorElements = (): Promise<void> =>

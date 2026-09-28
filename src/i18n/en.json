@@ -11,7 +11,7 @@
 		"days_to_show": "Days to show",
 		"guideline": "Guideline",
 		"show": "Show",
-		"show_name": "Name",
+		"show_title": "Title",
 		"show_icon": "Icon",
 		"show_state": "Latest value",
 		"show_category": "Category of the latest reading",
@@ -19,13 +19,14 @@
 		"show_pulse": "Pulse",
 		"show_scales": "Scales for the latest reading",
 		"show_chart": "Chart",
-		"show_legend": "Categories below the chart"
+		"show_legend": "Categories below the chart",
+		"colors": "Colors",
+		"show_parts": ""
 	},
 	"helper": {
 		"pulse": "Optional.",
 		"days_to_show": "The recorder keeps 10 days by default.",
-		"guideline": "Decides the category and the color of each reading.",
-		"show_pulse": "The latest pulse, and a pulse line below the chart."
+		"guideline": "Decides the category and the color of each reading."
 	},
 	"chart_type": {
 		"bars": "Bars (default)",
@@ -33,7 +34,8 @@
 		"daily": "Daily averages",
 		"split": "Separate charts",
 		"calendar": "Calendar",
-		"pie": "Pie chart"
+		"pie": "Pie chart",
+		"gauge": "Gauges"
 	},
 	"guideline": {
 		"esc_2024": "ESC 2024, Europe (default)",
@@ -56,7 +58,7 @@
 		"crisis": "Hypertensive crisis"
 	},
 	"text": {
-		"name": "Blood pressure",
+		"title": "Blood pressure",
 		"pulse": "Pulse {pulse}",
 		"average": "average {systolic}/{diastolic} of {count} readings",
 		"average_one": "average {systolic}/{diastolic} of 1 reading",

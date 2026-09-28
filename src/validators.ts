@@ -10,7 +10,7 @@ export function validateEditorConfig(config: unknown): asserts config is EditorC
 		throw new Error("The settings must be a map.");
 	}
 	const values = config as Record<string, unknown>;
-	for (const key of ["systolic", "diastolic", "pulse", "name"] as const) {
+	for (const key of ["systolic", "diastolic", "pulse", "title"] as const) {
 		if (isSet(values[key]) && typeof values[key] !== "string") {
 			throw new Error(`${key} must be text.`);
 		}
@@ -23,6 +23,14 @@ export function validateEditorConfig(config: unknown): asserts config is EditorC
 	}
 	if (isSet(values.days_to_show) && !(typeof values.days_to_show === "number" && values.days_to_show > 0)) {
 		throw new Error("days_to_show must be a number above 0.");
+	}
+	if (
+		isSet(values.colors) &&
+		(typeof values.colors !== "object" ||
+			Array.isArray(values.colors) ||
+			Object.values(values.colors as object).some((color) => isSet(color) && typeof color !== "string"))
+	) {
+		throw new Error("colors must be a map from a category to a color, like elevated: amber.");
 	}
 	for (const key of SHOW_KEYS) {
 		if (isSet(values[key]) && typeof values[key] !== "boolean") {
