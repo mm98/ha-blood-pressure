@@ -118,6 +118,15 @@ const polyline = (points: [number, number][]): SVGTemplateResult =>
 
 const fill = (category: Category): string => `fill: ${category.color}`;
 
+// The lowest to the highest measurement of a reading or a day as a line.
+// With one measurement, or all the same, there is no line, only the dot.
+const rangeLine = (reading: Reading, axis: "systolic" | "diastolic", x: number, area: Scale, className = "range") => {
+	const [low, high] = rangeOf(reading, axis) ?? [0, 0];
+	return high > low
+		? svg`<line class=${className} x1=${x} x2=${x} y1=${area.y(low)} y2=${area.y(high)}></line>`
+		: nothing;
+};
+
 // The pulse as a line with its dots, over the faded band of a usual resting pulse.
 const pulseArea = (readings: Reading[], x: (reading: Reading) => number, top: number, bottom: number, right: number) => {
 	const withPulse = readings.filter((reading) => reading.pulse !== undefined);
@@ -140,6 +149,8 @@ const dates = ({ start, end, language, timeZone, height }: ChartInput, right: nu
 };
 
 // One bar per reading, from diastolic up to systolic, colored by its category.
+// A reading with several measurements shows the lowest to the highest of each
+// value as a thin line at each end of the bar.
 const bars: Chart = {
 	height: timeChartHeight(DATES),
 	draw: (input) => {
@@ -152,8 +163,10 @@ const bars: Chart = {
 			${input.readings.map((reading) => {
 				const top = area.y(reading.systolic);
 				return svg`<rect x=${x(reading.time) - width / 2} y=${top} width=${width} rx="2"
-					height=${Math.max(area.y(reading.diastolic) - top, 2)}
-					style=${fill(classify(input.scheme, reading.systolic, reading.diastolic))}></rect>`;
+						height=${Math.max(area.y(reading.diastolic) - top, 2)}
+						style=${fill(classify(input.scheme, reading.systolic, reading.diastolic))}></rect>
+					${rangeLine(reading, "systolic", x(reading.time), area, "whisker")}
+					${rangeLine(reading, "diastolic", x(reading.time), area, "whisker")}`;
 			})}
 			${input.pulse ? pulseArea(input.readings, (reading) => x(reading.time), pulseTop, pulseBottom, right) : nothing}
 			${dates(input, right)}
@@ -162,7 +175,8 @@ const bars: Chart = {
 };
 
 // Systolic and diastolic as two lines, over faded bands where each value is
-// neither low nor in a higher category.
+// neither low nor in a higher category. A reading with several measurements
+// shows their lowest to highest value as a line through its dot.
 const lines: Chart = {
 	height: timeChartHeight(DATES),
 	draw: (input) => {
@@ -179,6 +193,8 @@ const lines: Chart = {
 			${input.readings.map((reading) => {
 				const style = fill(classify(input.scheme, reading.systolic, reading.diastolic));
 				return svg`
+					${rangeLine(reading, "systolic", x(reading.time), area)}
+					${rangeLine(reading, "diastolic", x(reading.time), area)}
 					<circle cx=${x(reading.time)} cy=${area.y(reading.systolic)} r="4" style=${style}></circle>
 					<circle cx=${x(reading.time)} cy=${area.y(reading.diastolic)} r="4" style=${style}></circle>
 				`;
@@ -227,7 +243,7 @@ const diamond = (x: number, y: number, style: string): SVGTemplateResult =>
 const DAY_LABELS = 40;
 
 // One point per day: the day's average as a circle (systolic) and a diamond
-// (diastolic), its lowest and highest value as a thin line.
+// (diastolic), its lowest to its highest measurement as a line.
 const daily: Chart = {
 	height: timeChartHeight(DAY_LABELS),
 	draw: (input) => {
@@ -254,10 +270,8 @@ const daily: Chart = {
 			${withReadings.map(({ index, reading }) => {
 				const style = fill(classify(input.scheme, reading.systolic, reading.diastolic));
 				return svg`
-					${(["systolic", "diastolic"] as const).map((axis) => {
-						const [low, high] = rangeOf(reading, axis)!;
-						return svg`<line class="range" x1=${x(index)} x2=${x(index)} y1=${area.y(low)} y2=${area.y(high)}></line>`;
-					})}
+					${rangeLine(reading, "systolic", x(index), area)}
+					${rangeLine(reading, "diastolic", x(index), area)}
 					<circle cx=${x(index)} cy=${area.y(reading.systolic)} r="4" style=${style}></circle>
 					${diamond(x(index), area.y(reading.diastolic), style)}
 				`;
@@ -302,14 +316,13 @@ const split: Chart = {
 				<text class="axis" x=${right + 6} y=${area.y(high) + 4}>${high}</text>
 				<text class="axis" x=${LEFT} y=${top + 2}>${translate(`text.${axis}`, input.language)}</text>
 				${polyline(input.readings.map((reading) => [x(reading.time), area.y(reading[axis])]))}
-				${input.readings.map((reading) => {
-					const [from, to] = rangeOf(reading, axis)!;
-					const style = fill(classifyValue(input.scheme, axis, reading[axis]));
-					return svg`
-						${to > from ? svg`<line class="range" x1=${x(reading.time)} x2=${x(reading.time)} y1=${area.y(from)} y2=${area.y(to)}></line>` : nothing}
-						<circle cx=${x(reading.time)} cy=${area.y(reading[axis])} r="3.5" style=${style}></circle>
-					`;
-				})}
+				${input.readings.map(
+					(reading) => svg`
+						${rangeLine(reading, axis, x(reading.time), area)}
+						<circle cx=${x(reading.time)} cy=${area.y(reading[axis])} r="3.5"
+							style=${fill(classifyValue(input.scheme, axis, reading[axis]))}></circle>
+					`,
+				)}
 			`;
 		});
 		const pulseTop = TOP + 2 * step;

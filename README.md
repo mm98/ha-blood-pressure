@@ -62,7 +62,7 @@ pulse: sensor.withings_heart_pulse
 
 ### Bars
 
-The default. One bar per reading, from the diastolic up to the systolic value, in the color of its category. The pulse shows as a line below.
+The default. One bar per reading, from the average diastolic up to the average systolic value, in the color of its category. When a reading has several measurements, a thin line at each end of the bar shows the lowest to the highest one. The pulse shows as a line below.
 
 ![Ten days of readings as bars from diastolic to systolic, with the pulse below](images/bars.png)
 
@@ -75,7 +75,7 @@ pulse: sensor.withings_heart_pulse
 
 ### Lines
 
-The systolic and the diastolic values as two lines, over faded bands where each value is neither low nor raised.
+The systolic and the diastolic values as two lines, over faded bands where each value is neither low nor raised. Each dot is the average of a reading, and a line through it shows the lowest to the highest measurement. A reading with one measurement is only a dot.
 
 ![Ten days of readings as two lines over faded bands](images/lines.png)
 
@@ -89,7 +89,7 @@ chart_type: lines
 
 ### Daily averages
 
-One point per day: the average of the day as a circle (systolic) and a diamond (diastolic), and the lowest to the highest value of the day as a thin line.
+One point per day: the average of the day as a circle (systolic) and a diamond (diastolic), and the lowest to the highest measurement of the day as a line. A day with one measurement is only a dot.
 
 ![Seven days of daily averages with the day's range as a thin line](images/daily.png)
 
