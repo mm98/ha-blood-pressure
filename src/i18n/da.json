@@ -9,6 +9,7 @@
 		"chart": "Diagram",
 		"chart_type": "Diagram",
 		"days_to_show": "Antal dage",
+		"height": "Diagrammets højde",
 		"guideline": "Retningslinje",
 		"show": "Vis",
 		"show_title": "Titel",
@@ -26,7 +27,8 @@
 	"helper": {
 		"pulse": "Valgfri.",
 		"days_to_show": "Recorder gemmer som standard 10 dage.",
-		"guideline": "Bestemmer kategorien og farven for hver måling."
+		"guideline": "Bestemmer kategorien og farven for hver måling.",
+		"height": "Lad feltet stå tomt for diagramtypens egen højde."
 	},
 	"chart_type": {
 		"bars": "Søjler (standard)",

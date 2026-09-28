@@ -1,13 +1,11 @@
-// The chart types. Each draws into an SVG that is WIDTH wide, with the time
-// running from left to right, except the pie chart.
+// The chart types. Each draws into an SVG of the given width and height in
+// pixels, with the time running from left to right, except the pie chart.
 
 import { nothing, svg, type SVGTemplateResult } from "lit";
 import { type ChartType, PULSE_RANGE } from "./config";
 import { type Category, classify, classifyValue, normalRange, PULSE_COLORS, type Scheme } from "./guidelines";
 import { translate } from "./i18n";
 import { averageReading, rangeOf, type Reading } from "./readings";
-
-export const WIDTH = 500;
 
 export interface ChartInput {
 	readings: Reading[];
@@ -20,74 +18,98 @@ export interface ChartInput {
 	pulse: boolean;
 	language: string;
 	timeZone?: string;
+	// The size of the drawing in pixels.
+	width: number;
+	height: number;
 }
 
 export interface Chart {
-	height(input: ChartInput): number;
+	// The height of the chart type when no height is set.
+	height(input: Omit<ChartInput, "height">): number;
 	draw(input: ChartInput): SVGTemplateResult | SVGTemplateResult[];
 }
 
 type Axis = "systolic" | "diastolic" | "pulse";
 
-const LEFT = 4;
-// Room on the right for the numbers of the grid lines.
-const RIGHT = 468;
 const DAY_MS = 24 * 3600 * 1000;
-// The main area, the pulse area below it, and the dates below that.
+const LEFT = 0;
+// Room on the right for the numbers of the grid lines.
+const NUMBERS = 32;
+// Room above the main area, for the highest dot.
 const TOP = 10;
-const BOTTOM = 190;
-const PULSE_TOP = 206;
-const PULSE_BOTTOM = 252;
-const DATES = 18;
+// The pulse area below the main area, and the gap between them.
+const PULSE_HEIGHT = 46;
+const PULSE_GAP = 16;
+// Room below for the first and the last day.
+const DATES = 28;
+// The smallest main area, however low the chart is set.
+const SMALLEST = 40;
+
+// Where the areas of a chart with the time running across are, from the
+// bottom: the room for the dates, the pulse and the main area above them.
+const frameOf = (input: ChartInput, below: number) => {
+	const pulse = input.pulse ? PULSE_HEIGHT + PULSE_GAP : 0;
+	const bottom = Math.max(input.height - below - pulse, TOP + SMALLEST);
+	return {
+		right: input.width - NUMBERS,
+		bottom,
+		pulseTop: bottom + PULSE_GAP,
+		pulseBottom: bottom + PULSE_GAP + PULSE_HEIGHT,
+	};
+};
+
+// The default height of those charts: a main area of 180 pixels.
+const timeChartHeight = (below: number) => (input: Omit<ChartInput, "height">): number =>
+	TOP + 180 + (input.pulse ? PULSE_GAP + PULSE_HEIGHT : 0) + below;
 
 // A value scale for one area of the chart.
 interface Scale {
 	low: number;
 	high: number;
+	right: number;
 	y: (value: number) => number;
 }
 
-const scale = (low: number, high: number, top: number, bottom: number): Scale => ({
+const scale = (low: number, high: number, top: number, bottom: number, right: number): Scale => ({
 	low,
 	high,
+	right,
 	y: (value) => bottom - ((value - low) / (high - low)) * (bottom - top),
 });
 
 // The values of the readings, with a margin, never narrower than min to max.
-const valueScale = (values: number[], min: number, max: number, top: number, bottom: number): Scale =>
-	scale(Math.min(min, ...values) - 5, Math.max(max, ...values) + 5, top, bottom);
+const valueScale = (values: number[], [min, max]: [number, number], top: number, bottom: number, right: number): Scale =>
+	scale(Math.min(min, ...values) - 5, Math.max(max, ...values) + 5, top, bottom, right);
 
-const timeScale = ({ start, end }: ChartInput) => (time: number) =>
-	LEFT + ((time - start) / Math.max(end - start, 1)) * (RIGHT - LEFT);
+const timeScale = ({ start, end }: ChartInput, right: number) => (time: number) =>
+	LEFT + ((time - start) / Math.max(end - start, 1)) * (right - LEFT);
 
 const valuesOf = (readings: Reading[], axis: Axis): number[] =>
 	readings.flatMap((reading) => reading.measurements.flatMap((measurement) => measurement[axis] ?? []));
 
-// Grid lines at round numbers, with the numbers on the right.
+// Both blood pressure values, for the charts that show them in one area.
+const pressureOf = (readings: Reading[]): number[] => [...valuesOf(readings, "systolic"), ...valuesOf(readings, "diastolic")];
+
+// A grid line with its number on the right.
+const gridLine = (area: Scale, value: number): SVGTemplateResult => svg`
+	<line class="grid" x1=${LEFT} x2=${area.right} y1=${area.y(value)} y2=${area.y(value)}></line>
+	<text class="axis" x=${area.right + 6} y=${area.y(value) + 4}>${value}</text>
+`;
+
+// Grid lines at round numbers. A low area gets fewer of them.
 const grid = (area: Scale, step: number): SVGTemplateResult[] => {
 	const lines: SVGTemplateResult[] = [];
-	for (let value = Math.ceil(area.low / step) * step; value <= area.high; value += step) {
-		lines.push(svg`
-			<line class="grid" x1=${LEFT} x2=${RIGHT} y1=${area.y(value)} y2=${area.y(value)}></line>
-			<text class="axis" x=${RIGHT + 6} y=${area.y(value) + 4}>${value}</text>
-		`);
+	const every = Math.abs(area.y(step) - area.y(0)) < 18 ? step * 2 : step;
+	for (let value = Math.ceil(area.low / every) * every; value <= area.high; value += every) {
+		lines.push(gridLine(area, value));
 	}
 	return lines;
 };
 
-// Grid lines at the given values only, for the small pulse area.
-const gridAt = (area: Scale, values: number[]): SVGTemplateResult[] =>
-	values.map(
-		(value) => svg`
-			<line class="grid" x1=${LEFT} x2=${RIGHT} y1=${area.y(value)} y2=${area.y(value)}></line>
-			<text class="axis" x=${RIGHT + 6} y=${area.y(value) + 4}>${value}</text>
-		`,
-	);
-
 // A faded band between two values, in the color of what it stands for.
 const band = (area: Scale, [from, to]: [number, number], color: string): SVGTemplateResult => {
 	const top = area.y(Math.min(to, area.high));
-	return svg`<rect class="normal" x=${LEFT} width=${RIGHT - LEFT} y=${top} height=${Math.max(area.y(Math.max(from, area.low)) - top, 0)}
+	return svg`<rect class="normal" x=${LEFT} width=${area.right - LEFT} y=${top} height=${Math.max(area.y(Math.max(from, area.low)) - top, 0)}
 		style=${`fill: ${color}`}></rect>`;
 };
 
@@ -97,36 +119,34 @@ const polyline = (points: [number, number][]): SVGTemplateResult =>
 const fill = (category: Category): string => `fill: ${category.color}`;
 
 // The pulse as a line with its dots, over the faded band of a usual resting pulse.
-const pulseArea = (input: ChartInput, x: (reading: Reading) => number, top = PULSE_TOP, bottom = PULSE_BOTTOM) => {
-	const readings = input.readings.filter((reading) => reading.pulse !== undefined);
-	const area = valueScale(valuesOf(readings, "pulse"), PULSE_RANGE[0], PULSE_RANGE[1], top, bottom);
+const pulseArea = (readings: Reading[], x: (reading: Reading) => number, top: number, bottom: number, right: number) => {
+	const withPulse = readings.filter((reading) => reading.pulse !== undefined);
+	const area = valueScale(valuesOf(withPulse, "pulse"), PULSE_RANGE, top, bottom, right);
 	return svg`
 		${band(area, PULSE_RANGE, PULSE_COLORS.usual)}
-		${gridAt(area, PULSE_RANGE)}
-		${polyline(readings.map((reading) => [x(reading), area.y(reading.pulse!)]))}
-		${readings.map((reading) => svg`<circle class="pulse" cx=${x(reading)} cy=${area.y(reading.pulse!)} r="3"></circle>`)}
+		${PULSE_RANGE.map((value) => gridLine(area, value))}
+		${polyline(withPulse.map((reading) => [x(reading), area.y(reading.pulse!)]))}
+		${withPulse.map((reading) => svg`<circle class="pulse" cx=${x(reading)} cy=${area.y(reading.pulse!)} r="3"></circle>`)}
 	`;
 };
 
 // The first and the last day of the period, below the chart.
-const dates = ({ start, end, language, timeZone }: ChartInput, y: number): SVGTemplateResult => {
+const dates = ({ start, end, language, timeZone, height }: ChartInput, right: number): SVGTemplateResult => {
 	const format = new Intl.DateTimeFormat(language, { day: "numeric", month: "short", timeZone });
 	return svg`
-		<text class="axis" x=${LEFT} y=${y}>${format.format(start)}</text>
-		<text class="axis" x=${RIGHT} y=${y} text-anchor="end">${format.format(end)}</text>
+		<text class="axis" x=${LEFT} y=${height - 6}>${format.format(start)}</text>
+		<text class="axis" x=${right} y=${height - 6} text-anchor="end">${format.format(end)}</text>
 	`;
 };
 
-// The height of the charts with the main area: the pulse and the dates below it.
-const timeChartHeight = (input: ChartInput): number => (input.pulse ? PULSE_BOTTOM : BOTTOM) + DATES + 10;
-
 // One bar per reading, from diastolic up to systolic, colored by its category.
 const bars: Chart = {
-	height: timeChartHeight,
+	height: timeChartHeight(DATES),
 	draw: (input) => {
-		const x = timeScale(input);
-		const area = valueScale([...valuesOf(input.readings, "systolic"), ...valuesOf(input.readings, "diastolic")], 60, 150, TOP, BOTTOM);
-		const width = Math.max(2, Math.min(10, ((RIGHT - LEFT) / Math.max(input.readings.length, 1)) * 0.6));
+		const { right, bottom, pulseTop, pulseBottom } = frameOf(input, DATES);
+		const x = timeScale(input, right);
+		const area = valueScale(pressureOf(input.readings), [60, 150], TOP, bottom, right);
+		const width = Math.max(2, Math.min(10, ((right - LEFT) / Math.max(input.readings.length, 1)) * 0.6));
 		return svg`
 			${grid(area, 20)}
 			${input.readings.map((reading) => {
@@ -135,8 +155,8 @@ const bars: Chart = {
 					height=${Math.max(area.y(reading.diastolic) - top, 2)}
 					style=${fill(classify(input.scheme, reading.systolic, reading.diastolic))}></rect>`;
 			})}
-			${input.pulse ? pulseArea(input, (reading) => x(reading.time)) : nothing}
-			${dates(input, timeChartHeight(input) - 6)}
+			${input.pulse ? pulseArea(input.readings, (reading) => x(reading.time), pulseTop, pulseBottom, right) : nothing}
+			${dates(input, right)}
 		`;
 	},
 };
@@ -144,10 +164,11 @@ const bars: Chart = {
 // Systolic and diastolic as two lines, over faded bands where each value is
 // neither low nor in a higher category.
 const lines: Chart = {
-	height: timeChartHeight,
+	height: timeChartHeight(DATES),
 	draw: (input) => {
-		const x = timeScale(input);
-		const area = valueScale([...valuesOf(input.readings, "systolic"), ...valuesOf(input.readings, "diastolic")], 60, 150, TOP, BOTTOM);
+		const { right, bottom, pulseTop, pulseBottom } = frameOf(input, DATES);
+		const x = timeScale(input, right);
+		const area = valueScale(pressureOf(input.readings), [60, 150], TOP, bottom, right);
 		const line = (axis: "systolic" | "diastolic") => polyline(input.readings.map((reading) => [x(reading.time), area.y(reading[axis])]));
 		return svg`
 			${band(area, normalRange(input.scheme, "systolic"), input.scheme.categories[0].color)}
@@ -162,8 +183,8 @@ const lines: Chart = {
 					<circle cx=${x(reading.time)} cy=${area.y(reading.diastolic)} r="4" style=${style}></circle>
 				`;
 			})}
-			${input.pulse ? pulseArea(input, (reading) => x(reading.time)) : nothing}
-			${dates(input, timeChartHeight(input) - 6)}
+			${input.pulse ? pulseArea(input.readings, (reading) => x(reading.time), pulseTop, pulseBottom, right) : nothing}
+			${dates(input, right)}
 		`;
 	},
 };
@@ -202,22 +223,29 @@ const dailyReadings = (input: ChartInput): Map<string, Reading> => {
 const diamond = (x: number, y: number, style: string): SVGTemplateResult =>
 	svg`<rect x=${x - 3.5} y=${y - 3.5} width="7" height="7" transform=${`rotate(45 ${x} ${y})`} style=${style}></rect>`;
 
+// Room below the daily chart for the date and the weekday of each day.
+const DAY_LABELS = 40;
+
 // One point per day: the day's average as a circle (systolic) and a diamond
 // (diastolic), its lowest and highest value as a thin line.
 const daily: Chart = {
-	height: (input) => (input.pulse ? PULSE_BOTTOM : BOTTOM) + 40,
+	height: timeChartHeight(DAY_LABELS),
 	draw: (input) => {
+		const { right, bottom, pulseTop, pulseBottom } = frameOf(input, DAY_LABELS);
 		const days = daysOf(input);
 		const byDay = dailyReadings(input);
-		const slot = (RIGHT - LEFT) / days.length;
+		const slot = (right - LEFT) / days.length;
 		const x = (index: number) => LEFT + slot * (index + 0.5);
-		const area = valueScale([...valuesOf(input.readings, "systolic"), ...valuesOf(input.readings, "diastolic")], 60, 150, TOP, BOTTOM);
-		const shown = days.map((day, index) => ({ index, reading: byDay.get(dayOf(day, "UTC")) }));
-		const withReadings = shown.filter((item): item is { index: number; reading: Reading } => Boolean(item.reading));
-		const labelEvery = Math.ceil(days.length / 10);
+		const area = valueScale(pressureOf(input.readings), [60, 150], TOP, bottom, right);
+		const withReadings = days.flatMap((day, index) => {
+			const reading = byDay.get(dayOf(day, "UTC"));
+			return reading ? [{ index, reading }] : [];
+		});
+		const indexOf = new Map(withReadings.map(({ index, reading }) => [reading, index]));
+		const labelEvery = Math.ceil(days.length / Math.max(Math.floor((right - LEFT) / 44), 1));
 		const date = new Intl.DateTimeFormat(input.language, { day: "numeric", timeZone: "UTC" });
 		const weekday = new Intl.DateTimeFormat(input.language, { weekday: "short", timeZone: "UTC" });
-		const labelsY = (input.pulse ? PULSE_BOTTOM : BOTTOM) + 18;
+		const labelsY = (input.pulse ? pulseBottom : bottom) + 18;
 		return svg`
 			${band(area, normalRange(input.scheme, "systolic"), input.scheme.categories[0].color)}
 			${band(area, normalRange(input.scheme, "diastolic"), input.scheme.categories[0].color)}
@@ -234,7 +262,9 @@ const daily: Chart = {
 					${diamond(x(index), area.y(reading.diastolic), style)}
 				`;
 			})}
-			${input.pulse ? pulseArea({ ...input, readings: withReadings.map(({ reading }) => reading) }, (reading) => x(withReadings.find((item) => item.reading === reading)!.index)) : nothing}
+			${input.pulse
+				? pulseArea(withReadings.map(({ reading }) => reading), (reading) => x(indexOf.get(reading)!), pulseTop, pulseBottom, right)
+				: nothing}
 			${days.map((day, index) =>
 				(days.length - 1 - index) % labelEvery
 					? nothing
@@ -247,24 +277,29 @@ const daily: Chart = {
 	},
 };
 
-const SPLIT_HEIGHT = 70;
+// Each area of the split chart and the gap below it, in the default height.
+const SPLIT_STEP = 84;
 const SPLIT_GAP = 14;
+// Room below the split chart for the dates.
+const SPLIT_DATES = 18;
 
 // Systolic, diastolic and the pulse each in their own area, over the faded
 // band of that value, with the limit where it gets high on the right. The
 // measurements of a sitting show as a short bar from the lowest to the highest.
 const split: Chart = {
-	height: (input) => (input.pulse ? 3 : 2) * (SPLIT_HEIGHT + SPLIT_GAP) + DATES,
+	height: (input) => (input.pulse ? 3 : 2) * SPLIT_STEP + SPLIT_DATES,
 	draw: (input) => {
-		const x = timeScale(input);
+		const right = input.width - NUMBERS;
+		const x = timeScale(input, right);
+		const step = Math.max((input.height - SPLIT_DATES) / (input.pulse ? 3 : 2), SPLIT_GAP + SMALLEST);
 		const areas = (["systolic", "diastolic"] as const).map((axis, index) => {
-			const top = TOP + index * (SPLIT_HEIGHT + SPLIT_GAP);
+			const top = TOP + index * step;
 			const [low, high] = normalRange(input.scheme, axis);
-			const area = valueScale(valuesOf(input.readings, axis), low, high, top, top + SPLIT_HEIGHT);
+			const area = valueScale(valuesOf(input.readings, axis), [low, high], top, top + step - SPLIT_GAP, right);
 			return svg`
 				${band(area, [low, high], input.scheme.categories[0].color)}
-				<line class="limit" x1=${LEFT} x2=${RIGHT} y1=${area.y(high)} y2=${area.y(high)}></line>
-				<text class="axis" x=${RIGHT + 6} y=${area.y(high) + 4}>${high}</text>
+				<line class="limit" x1=${LEFT} x2=${right} y1=${area.y(high)} y2=${area.y(high)}></line>
+				<text class="axis" x=${right + 6} y=${area.y(high) + 4}>${high}</text>
 				<text class="axis" x=${LEFT} y=${top + 2}>${translate(`text.${axis}`, input.language)}</text>
 				${polyline(input.readings.map((reading) => [x(reading.time), area.y(reading[axis])]))}
 				${input.readings.map((reading) => {
@@ -277,30 +312,29 @@ const split: Chart = {
 				})}
 			`;
 		});
-		const pulseTop = TOP + 2 * (SPLIT_HEIGHT + SPLIT_GAP);
+		const pulseTop = TOP + 2 * step;
 		return svg`
 			${areas}
 			${input.pulse
 				? svg`
 					<text class="axis" x=${LEFT} y=${pulseTop + 2}>${translate("text.pulse_name", input.language)}</text>
-					${pulseArea(input, (reading) => x(reading.time), pulseTop, pulseTop + SPLIT_HEIGHT)}
+					${pulseArea(input.readings, (reading) => x(reading.time), pulseTop, pulseTop + step - SPLIT_GAP, right)}
 				`
 				: nothing}
-			${dates(input, split.height(input) - 4)}
+			${svg`<g transform="translate(0 2)">${dates(input, right)}</g>`}
 		`;
 	},
 };
 
 const CALENDAR_WEEKS = 5;
 const CALENDAR_GAP = 6;
-const CALENDAR_ROW = 40;
 const CALENDAR_TOP = 22;
 
 // The last five weeks, one box per day in the color of that day's average,
-// the week as wide as the card. Weeks start on Monday, and the last row is
-// the current week.
+// the week as wide as the card and the weeks as high as the chart. Weeks
+// start on Monday, and the last row is the current week.
 const calendar: Chart = {
-	height: () => CALENDAR_TOP + CALENDAR_WEEKS * (CALENDAR_ROW + CALENDAR_GAP),
+	height: () => CALENDAR_TOP + CALENDAR_WEEKS * (40 + CALENDAR_GAP),
 	draw: (input) => {
 		const byDay = dailyReadings(input);
 		const [year, month, date] = dayOf(input.end, input.timeZone).split("-").map(Number);
@@ -308,12 +342,13 @@ const calendar: Chart = {
 		const first = today - (((new Date(today).getUTCDay() + 6) % 7) + (CALENDAR_WEEKS - 1) * 7) * DAY_MS;
 		const weekday = new Intl.DateTimeFormat(input.language, { weekday: "short", timeZone: "UTC" });
 		const dayNumber = new Intl.DateTimeFormat(input.language, { day: "numeric", timeZone: "UTC" });
-		const width = (WIDTH - 6 * CALENDAR_GAP) / 7;
+		const width = (input.width - 6 * CALENDAR_GAP) / 7;
+		const row = Math.max((input.height - CALENDAR_TOP) / CALENDAR_WEEKS - CALENDAR_GAP, 12);
 		const cells: SVGTemplateResult[] = [];
 		for (let index = 0; index < CALENDAR_WEEKS * 7; index++) {
 			const day = first + index * DAY_MS;
 			const x = (index % 7) * (width + CALENDAR_GAP);
-			const y = CALENDAR_TOP + Math.floor(index / 7) * (CALENDAR_ROW + CALENDAR_GAP);
+			const y = CALENDAR_TOP + Math.floor(index / 7) * (row + CALENDAR_GAP);
 			if (index < 7) {
 				cells.push(svg`<text class="axis" x=${x + width / 2} y="12" text-anchor="middle">${weekday.format(day)}</text>`);
 			}
@@ -322,9 +357,9 @@ const calendar: Chart = {
 			}
 			const reading = byDay.get(dayOf(day, "UTC"));
 			cells.push(svg`
-				<rect class=${reading ? "day" : "day empty"} x=${x} y=${y} width=${width} height=${CALENDAR_ROW} rx="6"
+				<rect class=${reading ? "day" : "day empty"} x=${x} y=${y} width=${width} height=${row} rx="6"
 					style=${reading ? fill(classify(input.scheme, reading.systolic, reading.diastolic)) : nothing}></rect>
-				<text class="date" x=${x + 8} y=${y + 16}>${dayNumber.format(day)}</text>
+				${row >= 24 ? svg`<text class="date" x=${x + 8} y=${y + 16}>${dayNumber.format(day)}</text>` : nothing}
 			`);
 		}
 		return cells;
@@ -345,30 +380,36 @@ export const sharesOf = (readings: Reading[], scheme: Scheme): Share[] =>
 		}))
 		.filter((share) => share.count > 0);
 
+// The width of the ring of the pie chart.
+const RING = 28;
+
 // A ring with the share of each category, and the number of readings inside.
+// The ring grows with the height of the chart.
 const pie: Chart = {
 	height: () => 200,
-	draw: ({ readings, scheme, language }) => {
-		const radius = 72;
+	draw: ({ readings, scheme, language, width, height }) => {
+		const cx = width / 2;
+		const cy = height / 2;
+		const radius = Math.max(Math.min(width, height) / 2 - RING / 2 - 2, RING);
 		const circumference = 2 * Math.PI * radius;
 		let offset = 0;
 		const slices = sharesOf(readings, scheme).map(({ category, count }) => {
 			const length = (count / readings.length) * circumference;
-			const slice = svg`<circle class="slice" cx=${WIDTH / 2} cy="100" r=${radius}
+			const slice = svg`<circle class="slice" cx=${cx} cy=${cy} r=${radius}
 				stroke-dasharray=${`${length} ${circumference - length}`} stroke-dashoffset=${-offset}
-				transform=${`rotate(-90 ${WIDTH / 2} 100)`} style=${`stroke: ${category.color}`}></circle>`;
+				transform=${`rotate(-90 ${cx} ${cy})`} style=${`stroke: ${category.color}`}></circle>`;
 			offset += length;
 			return slice;
 		});
 		return svg`
 			${slices}
-			<text class="total" x=${WIDTH / 2} y="104" text-anchor="middle">${readings.length}</text>
-			<text class="axis" x=${WIDTH / 2} y="124" text-anchor="middle">
+			<text class="total" x=${cx} y=${cy + 4} text-anchor="middle">${readings.length}</text>
+			<text class="axis" x=${cx} y=${cy + 24} text-anchor="middle">
 				${translate(readings.length === 1 ? "text.reading" : "text.readings", language)}
 			</text>
 		`;
 	},
 };
 
-// The gauges are Home Assistant's own gauge elements, drawn by the card.
+// The gauge is Home Assistant's own gauge element, drawn by the card.
 export const CHARTS: Record<Exclude<ChartType, "gauge">, Chart> = { bars, lines, daily, split, calendar, pie };

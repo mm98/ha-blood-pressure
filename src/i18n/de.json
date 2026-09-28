@@ -9,6 +9,7 @@
 		"chart": "Diagramm",
 		"chart_type": "Diagramm",
 		"days_to_show": "Anzuzeigende Tage",
+		"height": "Höhe des Diagramms",
 		"guideline": "Leitlinie",
 		"show": "Anzeigen",
 		"show_title": "Titel",
@@ -26,7 +27,8 @@
 	"helper": {
 		"pulse": "Optional.",
 		"days_to_show": "Der Recorder speichert standardmäßig 10 Tage.",
-		"guideline": "Bestimmt die Kategorie und die Farbe jeder Messung."
+		"guideline": "Bestimmt die Kategorie und die Farbe jeder Messung.",
+		"height": "Leer lassen für die Höhe des Diagrammtyps."
 	},
 	"chart_type": {
 		"bars": "Balken (Standard)",

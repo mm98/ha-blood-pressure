@@ -180,6 +180,23 @@ colors:
 
 The categories of each guideline are listed below. Their names in `colors` are `low`, `non_elevated`, `elevated` and `hypertension` for `esc_2024`, `low`, `optimal`, `normal`, `high_normal`, `grade_1`, `grade_2` and `grade_3` for `esc_esh_2018`, and `low`, `normal`, `elevated`, `stage_1`, `stage_2` and `crisis` for `acc_aha_2017`.
 
+## Height
+
+Every chart type has a height of its own. Set `height` to make the chart taller or lower, in pixels. The chart keeps the width of the card, and its text and dots keep their size. For the gauge, `height` sets how big the gauge gets.
+
+![Separate charts made taller with height 420](images/height.png)
+
+```yaml
+type: custom:blood-pressure
+systolic: sensor.withings_systolic_blood_pressure
+diastolic: sensor.withings_diastolic_blood_pressure
+pulse: sensor.withings_heart_pulse
+chart_type: split
+days_to_show: 14
+height: 420
+show_scales: false
+```
+
 ## Fewer parts
 
 Every part of the card can be turned off: the title, the icon, the latest value, its category, the average, the pulse, the scales, the chart and the categories below the chart.
@@ -219,6 +236,7 @@ The colors show the category of a reading, not a diagnosis. The targets your doc
 | `title` | The title at the top of the card. `Blood pressure` by default, in the language of your user profile. |
 | `chart_type` | `bars` (default), `lines`, `daily`, `split`, `calendar`, `pie` or `gauge`. |
 | `days_to_show` | How many days the chart and the average cover. 10 by default. |
+| `height` | The height of the chart in pixels. By default each chart type has its own height. |
 | `guideline` | `esc_2024` (default), `esc_esh_2018` or `acc_aha_2017`. See **Guidelines** below. |
 | `colors` | Another color for some categories, like `elevated: orange`. See **Colors** above. |
 | `show_title`, `show_icon` | The title and the icon at the top. |

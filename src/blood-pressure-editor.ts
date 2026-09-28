@@ -47,6 +47,7 @@ const buildSchema = (language: string, guideline: GuidelineId) => [
 				type: "grid",
 				schema: [
 					{ name: "days_to_show", selector: { number: { mode: "box", min: 1, step: 1 } } },
+					{ name: "height", selector: { number: { mode: "box", min: 60, step: 10, unit_of_measurement: "px" } } },
 					{ name: "guideline", selector: selectSelector(GUIDELINE_IDS, "guideline", language) },
 				],
 			},

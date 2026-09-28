@@ -825,6 +825,7 @@
       chart: "Diagram",
       chart_type: "Diagram",
       days_to_show: "Antal dage",
+      height: "Diagrammets højde",
       guideline: "Retningslinje",
       show: "Vis",
       show_title: "Titel",
@@ -842,7 +843,8 @@
     helper: {
       pulse: "Valgfri.",
       days_to_show: "Recorder gemmer som standard 10 dage.",
-      guideline: "Bestemmer kategorien og farven for hver måling."
+      guideline: "Bestemmer kategorien og farven for hver måling.",
+      height: "Lad feltet stå tomt for diagramtypens egen højde."
     },
     chart_type: {
       bars: "Søjler (standard)",
@@ -901,6 +903,7 @@
       chart: "Diagramm",
       chart_type: "Diagramm",
       days_to_show: "Anzuzeigende Tage",
+      height: "Höhe des Diagramms",
       guideline: "Leitlinie",
       show: "Anzeigen",
       show_title: "Titel",
@@ -918,7 +921,8 @@
     helper: {
       pulse: "Optional.",
       days_to_show: "Der Recorder speichert standardmäßig 10 Tage.",
-      guideline: "Bestimmt die Kategorie und die Farbe jeder Messung."
+      guideline: "Bestimmt die Kategorie und die Farbe jeder Messung.",
+      height: "Leer lassen für die Höhe des Diagrammtyps."
     },
     chart_type: {
       bars: "Balken (Standard)",
@@ -977,6 +981,7 @@
       chart: "Chart",
       chart_type: "Chart",
       days_to_show: "Days to show",
+      height: "Chart height",
       guideline: "Guideline",
       show: "Show",
       show_title: "Title",
@@ -994,7 +999,8 @@
     helper: {
       pulse: "Optional.",
       days_to_show: "The recorder keeps 10 days by default.",
-      guideline: "Decides the category and the color of each reading."
+      guideline: "Decides the category and the color of each reading.",
+      height: "Leave empty for the height of the chart type."
     },
     chart_type: {
       bars: "Bars (default)",
@@ -1053,6 +1059,7 @@
       chart: "Gráfico",
       chart_type: "Gráfico",
       days_to_show: "Días a mostrar",
+      height: "Altura del gráfico",
       guideline: "Guía",
       show: "Mostrar",
       show_title: "Título",
@@ -1070,7 +1077,8 @@
     helper: {
       pulse: "Opcional.",
       days_to_show: "El recorder guarda 10 días de forma predeterminada.",
-      guideline: "Decide la categoría y el color de cada medición."
+      guideline: "Decide la categoría y el color de cada medición.",
+      height: "Déjalo vacío para usar la altura del tipo de gráfico."
     },
     chart_type: {
       bars: "Barras (predeterminado)",
@@ -1241,70 +1249,78 @@
   };
 
   // src/charts.ts
-  var WIDTH = 500;
-  var LEFT = 4;
-  var RIGHT = 468;
   var DAY_MS = 24 * 3600 * 1e3;
+  var LEFT = 0;
+  var NUMBERS = 32;
   var TOP = 10;
-  var BOTTOM = 190;
-  var PULSE_TOP = 206;
-  var PULSE_BOTTOM = 252;
-  var DATES = 18;
-  var scale = (low, high, top, bottom) => ({
+  var PULSE_HEIGHT = 46;
+  var PULSE_GAP = 16;
+  var DATES = 28;
+  var SMALLEST = 40;
+  var frameOf = (input, below) => {
+    const pulse = input.pulse ? PULSE_HEIGHT + PULSE_GAP : 0;
+    const bottom = Math.max(input.height - below - pulse, TOP + SMALLEST);
+    return {
+      right: input.width - NUMBERS,
+      bottom,
+      pulseTop: bottom + PULSE_GAP,
+      pulseBottom: bottom + PULSE_GAP + PULSE_HEIGHT
+    };
+  };
+  var timeChartHeight = (below) => (input) => TOP + 180 + (input.pulse ? PULSE_GAP + PULSE_HEIGHT : 0) + below;
+  var scale = (low, high, top, bottom, right) => ({
     low,
     high,
+    right,
     y: (value) => bottom - (value - low) / (high - low) * (bottom - top)
   });
-  var valueScale = (values, min, max, top, bottom) => scale(Math.min(min, ...values) - 5, Math.max(max, ...values) + 5, top, bottom);
-  var timeScale = ({ start, end }) => (time) => LEFT + (time - start) / Math.max(end - start, 1) * (RIGHT - LEFT);
+  var valueScale = (values, [min, max], top, bottom, right) => scale(Math.min(min, ...values) - 5, Math.max(max, ...values) + 5, top, bottom, right);
+  var timeScale = ({ start, end }, right) => (time) => LEFT + (time - start) / Math.max(end - start, 1) * (right - LEFT);
   var valuesOf = (readings, axis) => readings.flatMap((reading) => reading.measurements.flatMap((measurement) => measurement[axis] ?? []));
+  var pressureOf = (readings) => [...valuesOf(readings, "systolic"), ...valuesOf(readings, "diastolic")];
+  var gridLine = (area, value) => w`
+	<line class="grid" x1=${LEFT} x2=${area.right} y1=${area.y(value)} y2=${area.y(value)}></line>
+	<text class="axis" x=${area.right + 6} y=${area.y(value) + 4}>${value}</text>
+`;
   var grid = (area, step) => {
     const lines2 = [];
-    for (let value = Math.ceil(area.low / step) * step; value <= area.high; value += step) {
-      lines2.push(w`
-			<line class="grid" x1=${LEFT} x2=${RIGHT} y1=${area.y(value)} y2=${area.y(value)}></line>
-			<text class="axis" x=${RIGHT + 6} y=${area.y(value) + 4}>${value}</text>
-		`);
+    const every = Math.abs(area.y(step) - area.y(0)) < 18 ? step * 2 : step;
+    for (let value = Math.ceil(area.low / every) * every; value <= area.high; value += every) {
+      lines2.push(gridLine(area, value));
     }
     return lines2;
   };
-  var gridAt = (area, values) => values.map(
-    (value) => w`
-			<line class="grid" x1=${LEFT} x2=${RIGHT} y1=${area.y(value)} y2=${area.y(value)}></line>
-			<text class="axis" x=${RIGHT + 6} y=${area.y(value) + 4}>${value}</text>
-		`
-  );
   var band = (area, [from, to], color) => {
     const top = area.y(Math.min(to, area.high));
-    return w`<rect class="normal" x=${LEFT} width=${RIGHT - LEFT} y=${top} height=${Math.max(area.y(Math.max(from, area.low)) - top, 0)}
+    return w`<rect class="normal" x=${LEFT} width=${area.right - LEFT} y=${top} height=${Math.max(area.y(Math.max(from, area.low)) - top, 0)}
 		style=${`fill: ${color}`}></rect>`;
   };
   var polyline = (points) => w`<polyline class="line" points=${points.map(([x2, y3]) => `${x2},${y3}`).join(" ")}></polyline>`;
   var fill = (category) => `fill: ${category.color}`;
-  var pulseArea = (input, x2, top = PULSE_TOP, bottom = PULSE_BOTTOM) => {
-    const readings = input.readings.filter((reading) => reading.pulse !== void 0);
-    const area = valueScale(valuesOf(readings, "pulse"), PULSE_RANGE[0], PULSE_RANGE[1], top, bottom);
+  var pulseArea = (readings, x2, top, bottom, right) => {
+    const withPulse = readings.filter((reading) => reading.pulse !== void 0);
+    const area = valueScale(valuesOf(withPulse, "pulse"), PULSE_RANGE, top, bottom, right);
     return w`
 		${band(area, PULSE_RANGE, PULSE_COLORS.usual)}
-		${gridAt(area, PULSE_RANGE)}
-		${polyline(readings.map((reading) => [x2(reading), area.y(reading.pulse)]))}
-		${readings.map((reading) => w`<circle class="pulse" cx=${x2(reading)} cy=${area.y(reading.pulse)} r="3"></circle>`)}
+		${PULSE_RANGE.map((value) => gridLine(area, value))}
+		${polyline(withPulse.map((reading) => [x2(reading), area.y(reading.pulse)]))}
+		${withPulse.map((reading) => w`<circle class="pulse" cx=${x2(reading)} cy=${area.y(reading.pulse)} r="3"></circle>`)}
 	`;
   };
-  var dates = ({ start, end, language, timeZone }, y3) => {
+  var dates = ({ start, end, language, timeZone, height }, right) => {
     const format = new Intl.DateTimeFormat(language, { day: "numeric", month: "short", timeZone });
     return w`
-		<text class="axis" x=${LEFT} y=${y3}>${format.format(start)}</text>
-		<text class="axis" x=${RIGHT} y=${y3} text-anchor="end">${format.format(end)}</text>
+		<text class="axis" x=${LEFT} y=${height - 6}>${format.format(start)}</text>
+		<text class="axis" x=${right} y=${height - 6} text-anchor="end">${format.format(end)}</text>
 	`;
   };
-  var timeChartHeight = (input) => (input.pulse ? PULSE_BOTTOM : BOTTOM) + DATES + 10;
   var bars = {
-    height: timeChartHeight,
+    height: timeChartHeight(DATES),
     draw: (input) => {
-      const x2 = timeScale(input);
-      const area = valueScale([...valuesOf(input.readings, "systolic"), ...valuesOf(input.readings, "diastolic")], 60, 150, TOP, BOTTOM);
-      const width = Math.max(2, Math.min(10, (RIGHT - LEFT) / Math.max(input.readings.length, 1) * 0.6));
+      const { right, bottom, pulseTop, pulseBottom } = frameOf(input, DATES);
+      const x2 = timeScale(input, right);
+      const area = valueScale(pressureOf(input.readings), [60, 150], TOP, bottom, right);
+      const width = Math.max(2, Math.min(10, (right - LEFT) / Math.max(input.readings.length, 1) * 0.6));
       return w`
 			${grid(area, 20)}
 			${input.readings.map((reading) => {
@@ -1313,16 +1329,17 @@
 					height=${Math.max(area.y(reading.diastolic) - top, 2)}
 					style=${fill(classify(input.scheme, reading.systolic, reading.diastolic))}></rect>`;
       })}
-			${input.pulse ? pulseArea(input, (reading) => x2(reading.time)) : A}
-			${dates(input, timeChartHeight(input) - 6)}
+			${input.pulse ? pulseArea(input.readings, (reading) => x2(reading.time), pulseTop, pulseBottom, right) : A}
+			${dates(input, right)}
 		`;
     }
   };
   var lines = {
-    height: timeChartHeight,
+    height: timeChartHeight(DATES),
     draw: (input) => {
-      const x2 = timeScale(input);
-      const area = valueScale([...valuesOf(input.readings, "systolic"), ...valuesOf(input.readings, "diastolic")], 60, 150, TOP, BOTTOM);
+      const { right, bottom, pulseTop, pulseBottom } = frameOf(input, DATES);
+      const x2 = timeScale(input, right);
+      const area = valueScale(pressureOf(input.readings), [60, 150], TOP, bottom, right);
       const line = (axis) => polyline(input.readings.map((reading) => [x2(reading.time), area.y(reading[axis])]));
       return w`
 			${band(area, normalRange(input.scheme, "systolic"), input.scheme.categories[0].color)}
@@ -1337,8 +1354,8 @@
 					<circle cx=${x2(reading.time)} cy=${area.y(reading.diastolic)} r="4" style=${style}></circle>
 				`;
       })}
-			${input.pulse ? pulseArea(input, (reading) => x2(reading.time)) : A}
-			${dates(input, timeChartHeight(input) - 6)}
+			${input.pulse ? pulseArea(input.readings, (reading) => x2(reading.time), pulseTop, pulseBottom, right) : A}
+			${dates(input, right)}
 		`;
     }
   };
@@ -1365,20 +1382,25 @@
     );
   };
   var diamond = (x2, y3, style) => w`<rect x=${x2 - 3.5} y=${y3 - 3.5} width="7" height="7" transform=${`rotate(45 ${x2} ${y3})`} style=${style}></rect>`;
+  var DAY_LABELS = 40;
   var daily = {
-    height: (input) => (input.pulse ? PULSE_BOTTOM : BOTTOM) + 40,
+    height: timeChartHeight(DAY_LABELS),
     draw: (input) => {
+      const { right, bottom, pulseTop, pulseBottom } = frameOf(input, DAY_LABELS);
       const days = daysOf(input);
       const byDay = dailyReadings(input);
-      const slot = (RIGHT - LEFT) / days.length;
+      const slot = (right - LEFT) / days.length;
       const x2 = (index) => LEFT + slot * (index + 0.5);
-      const area = valueScale([...valuesOf(input.readings, "systolic"), ...valuesOf(input.readings, "diastolic")], 60, 150, TOP, BOTTOM);
-      const shown = days.map((day, index) => ({ index, reading: byDay.get(dayOf(day, "UTC")) }));
-      const withReadings = shown.filter((item) => Boolean(item.reading));
-      const labelEvery = Math.ceil(days.length / 10);
+      const area = valueScale(pressureOf(input.readings), [60, 150], TOP, bottom, right);
+      const withReadings = days.flatMap((day, index) => {
+        const reading = byDay.get(dayOf(day, "UTC"));
+        return reading ? [{ index, reading }] : [];
+      });
+      const indexOf = new Map(withReadings.map(({ index, reading }) => [reading, index]));
+      const labelEvery = Math.ceil(days.length / Math.max(Math.floor((right - LEFT) / 44), 1));
       const date = new Intl.DateTimeFormat(input.language, { day: "numeric", timeZone: "UTC" });
       const weekday = new Intl.DateTimeFormat(input.language, { weekday: "short", timeZone: "UTC" });
-      const labelsY = (input.pulse ? PULSE_BOTTOM : BOTTOM) + 18;
+      const labelsY = (input.pulse ? pulseBottom : bottom) + 18;
       return w`
 			${band(area, normalRange(input.scheme, "systolic"), input.scheme.categories[0].color)}
 			${band(area, normalRange(input.scheme, "diastolic"), input.scheme.categories[0].color)}
@@ -1395,7 +1417,7 @@
 					${diamond(x2(index), area.y(reading.diastolic), style)}
 				`;
       })}
-			${input.pulse ? pulseArea({ ...input, readings: withReadings.map(({ reading }) => reading) }, (reading) => x2(withReadings.find((item) => item.reading === reading).index)) : A}
+			${input.pulse ? pulseArea(withReadings.map(({ reading }) => reading), (reading) => x2(indexOf.get(reading)), pulseTop, pulseBottom, right) : A}
 			${days.map(
         (day, index) => (days.length - 1 - index) % labelEvery ? A : w`
 						<text class="axis" x=${x2(index)} y=${labelsY} text-anchor="middle">${date.format(day)}</text>
@@ -1405,20 +1427,23 @@
 		`;
     }
   };
-  var SPLIT_HEIGHT = 70;
+  var SPLIT_STEP = 84;
   var SPLIT_GAP = 14;
+  var SPLIT_DATES = 18;
   var split = {
-    height: (input) => (input.pulse ? 3 : 2) * (SPLIT_HEIGHT + SPLIT_GAP) + DATES,
+    height: (input) => (input.pulse ? 3 : 2) * SPLIT_STEP + SPLIT_DATES,
     draw: (input) => {
-      const x2 = timeScale(input);
+      const right = input.width - NUMBERS;
+      const x2 = timeScale(input, right);
+      const step = Math.max((input.height - SPLIT_DATES) / (input.pulse ? 3 : 2), SPLIT_GAP + SMALLEST);
       const areas = ["systolic", "diastolic"].map((axis, index) => {
-        const top = TOP + index * (SPLIT_HEIGHT + SPLIT_GAP);
+        const top = TOP + index * step;
         const [low, high] = normalRange(input.scheme, axis);
-        const area = valueScale(valuesOf(input.readings, axis), low, high, top, top + SPLIT_HEIGHT);
+        const area = valueScale(valuesOf(input.readings, axis), [low, high], top, top + step - SPLIT_GAP, right);
         return w`
 				${band(area, [low, high], input.scheme.categories[0].color)}
-				<line class="limit" x1=${LEFT} x2=${RIGHT} y1=${area.y(high)} y2=${area.y(high)}></line>
-				<text class="axis" x=${RIGHT + 6} y=${area.y(high) + 4}>${high}</text>
+				<line class="limit" x1=${LEFT} x2=${right} y1=${area.y(high)} y2=${area.y(high)}></line>
+				<text class="axis" x=${right + 6} y=${area.y(high) + 4}>${high}</text>
 				<text class="axis" x=${LEFT} y=${top + 2}>${translate(`text.${axis}`, input.language)}</text>
 				${polyline(input.readings.map((reading) => [x2(reading.time), area.y(reading[axis])]))}
 				${input.readings.map((reading) => {
@@ -1431,23 +1456,22 @@
         })}
 			`;
       });
-      const pulseTop = TOP + 2 * (SPLIT_HEIGHT + SPLIT_GAP);
+      const pulseTop = TOP + 2 * step;
       return w`
 			${areas}
 			${input.pulse ? w`
 					<text class="axis" x=${LEFT} y=${pulseTop + 2}>${translate("text.pulse_name", input.language)}</text>
-					${pulseArea(input, (reading) => x2(reading.time), pulseTop, pulseTop + SPLIT_HEIGHT)}
+					${pulseArea(input.readings, (reading) => x2(reading.time), pulseTop, pulseTop + step - SPLIT_GAP, right)}
 				` : A}
-			${dates(input, split.height(input) - 4)}
+			${w`<g transform="translate(0 2)">${dates(input, right)}</g>`}
 		`;
     }
   };
   var CALENDAR_WEEKS = 5;
   var CALENDAR_GAP = 6;
-  var CALENDAR_ROW = 40;
   var CALENDAR_TOP = 22;
   var calendar = {
-    height: () => CALENDAR_TOP + CALENDAR_WEEKS * (CALENDAR_ROW + CALENDAR_GAP),
+    height: () => CALENDAR_TOP + CALENDAR_WEEKS * (40 + CALENDAR_GAP),
     draw: (input) => {
       const byDay = dailyReadings(input);
       const [year, month, date] = dayOf(input.end, input.timeZone).split("-").map(Number);
@@ -1455,12 +1479,13 @@
       const first = today - ((new Date(today).getUTCDay() + 6) % 7 + (CALENDAR_WEEKS - 1) * 7) * DAY_MS;
       const weekday = new Intl.DateTimeFormat(input.language, { weekday: "short", timeZone: "UTC" });
       const dayNumber = new Intl.DateTimeFormat(input.language, { day: "numeric", timeZone: "UTC" });
-      const width = (WIDTH - 6 * CALENDAR_GAP) / 7;
+      const width = (input.width - 6 * CALENDAR_GAP) / 7;
+      const row = Math.max((input.height - CALENDAR_TOP) / CALENDAR_WEEKS - CALENDAR_GAP, 12);
       const cells = [];
       for (let index = 0; index < CALENDAR_WEEKS * 7; index++) {
         const day = first + index * DAY_MS;
         const x2 = index % 7 * (width + CALENDAR_GAP);
-        const y3 = CALENDAR_TOP + Math.floor(index / 7) * (CALENDAR_ROW + CALENDAR_GAP);
+        const y3 = CALENDAR_TOP + Math.floor(index / 7) * (row + CALENDAR_GAP);
         if (index < 7) {
           cells.push(w`<text class="axis" x=${x2 + width / 2} y="12" text-anchor="middle">${weekday.format(day)}</text>`);
         }
@@ -1469,9 +1494,9 @@
         }
         const reading = byDay.get(dayOf(day, "UTC"));
         cells.push(w`
-				<rect class=${reading ? "day" : "day empty"} x=${x2} y=${y3} width=${width} height=${CALENDAR_ROW} rx="6"
+				<rect class=${reading ? "day" : "day empty"} x=${x2} y=${y3} width=${width} height=${row} rx="6"
 					style=${reading ? fill(classify(input.scheme, reading.systolic, reading.diastolic)) : A}></rect>
-				<text class="date" x=${x2 + 8} y=${y3 + 16}>${dayNumber.format(day)}</text>
+				${row >= 24 ? w`<text class="date" x=${x2 + 8} y=${y3 + 16}>${dayNumber.format(day)}</text>` : A}
 			`);
       }
       return cells;
@@ -1481,24 +1506,27 @@
     category,
     count: readings.filter((reading) => classify(scheme, reading.systolic, reading.diastolic) === category).length
   })).filter((share) => share.count > 0);
+  var RING = 28;
   var pie = {
     height: () => 200,
-    draw: ({ readings, scheme, language }) => {
-      const radius = 72;
+    draw: ({ readings, scheme, language, width, height }) => {
+      const cx = width / 2;
+      const cy = height / 2;
+      const radius = Math.max(Math.min(width, height) / 2 - RING / 2 - 2, RING);
       const circumference = 2 * Math.PI * radius;
       let offset = 0;
       const slices = sharesOf(readings, scheme).map(({ category, count }) => {
         const length = count / readings.length * circumference;
-        const slice = w`<circle class="slice" cx=${WIDTH / 2} cy="100" r=${radius}
+        const slice = w`<circle class="slice" cx=${cx} cy=${cy} r=${radius}
 				stroke-dasharray=${`${length} ${circumference - length}`} stroke-dashoffset=${-offset}
-				transform=${`rotate(-90 ${WIDTH / 2} 100)`} style=${`stroke: ${category.color}`}></circle>`;
+				transform=${`rotate(-90 ${cx} ${cy})`} style=${`stroke: ${category.color}`}></circle>`;
         offset += length;
         return slice;
       });
       return w`
 			${slices}
-			<text class="total" x=${WIDTH / 2} y="104" text-anchor="middle">${readings.length}</text>
-			<text class="axis" x=${WIDTH / 2} y="124" text-anchor="middle">
+			<text class="total" x=${cx} y=${cy + 4} text-anchor="middle">${readings.length}</text>
+			<text class="axis" x=${cx} y=${cy + 24} text-anchor="middle">
 				${translate(readings.length === 1 ? "text.reading" : "text.readings", language)}
 			</text>
 		`;
@@ -1528,6 +1556,9 @@
     }
     if (isSet(values.colors) && (typeof values.colors !== "object" || Array.isArray(values.colors) || Object.values(values.colors).some((color) => isSet(color) && typeof color !== "string"))) {
       throw new Error("colors must be a map from a category to a color, like elevated: amber.");
+    }
+    if (isSet(values.height) && !(typeof values.height === "number" && values.height > 0)) {
+      throw new Error("height must be a number of pixels above 0.");
     }
     for (const key of SHOW_KEYS) {
       if (isSet(values[key]) && typeof values[key] !== "boolean") {
@@ -1572,6 +1603,7 @@
           type: "grid",
           schema: [
             { name: "days_to_show", selector: { number: { mode: "box", min: 1, step: 1 } } },
+            { name: "height", selector: { number: { mode: "box", min: 60, step: 10, unit_of_measurement: "px" } } },
             { name: "guideline", selector: selectSelector(GUIDELINE_IDS, "guideline", language) }
           ]
         }
@@ -1729,12 +1761,14 @@
   // src/blood-pressure-card.ts
   var CARD_TAG = "blood-pressure";
   var DAY_MS2 = 24 * 3600 * 1e3;
+  var PADDING = 32;
+  var CHART_WIDTH = 418;
   var numberOf = (stateObj) => {
     const value = stateObj.state === "" ? NaN : Number(stateObj.state);
     return Number.isFinite(value) ? value : void 0;
   };
-  var __failed_dec, __readings_dec, __ready_dec2, __config_dec2, _hass_dec2, _a2, _init2, _hass2, __config2, __ready2, __readings, __failed;
-  var BloodPressureCard = class extends (_a2 = i4, _hass_dec2 = [n4({ attribute: false })], __config_dec2 = [r5()], __ready_dec2 = [r5()], __readings_dec = [r5()], __failed_dec = [r5()], _a2) {
+  var __width_dec, __failed_dec, __readings_dec, __ready_dec2, __config_dec2, _hass_dec2, _a2, _init2, _hass2, __config2, __ready2, __readings, __failed, __width;
+  var BloodPressureCard = class extends (_a2 = i4, _hass_dec2 = [n4({ attribute: false })], __config_dec2 = [r5()], __ready_dec2 = [r5()], __readings_dec = [r5()], __failed_dec = [r5()], __width_dec = [r5()], _a2) {
     constructor() {
       super(...arguments);
       __privateAdd(this, _hass2, __runInitializers(_init2, 8, this)), __runInitializers(_init2, 11, this);
@@ -1748,6 +1782,8 @@
       __publicField(this, "_loadedFor");
       // Counts the reads, so only the newest one is shown.
       __publicField(this, "_readCount", 0);
+      __privateAdd(this, __width, __runInitializers(_init2, 28, this, CHART_WIDTH)), __runInitializers(_init2, 31, this);
+      __publicField(this, "_resizeObserver");
     }
     static getConfigElement() {
       return document.createElement(EDITOR_TAG);
@@ -1774,6 +1810,16 @@
         () => {
         }
       );
+      this._resizeObserver ??= new ResizeObserver(() => {
+        if (this.clientWidth) {
+          this._width = Math.round(this.clientWidth - PADDING);
+        }
+      });
+      this._resizeObserver.observe(this);
+    }
+    disconnectedCallback() {
+      super.disconnectedCallback();
+      this._resizeObserver?.disconnect();
     }
     get _entityIds() {
       const { systolic, diastolic, pulse } = this._config;
@@ -1783,12 +1829,15 @@
       if (!this._config || !this.hass) {
         return false;
       }
-      return ["_config", "_ready", "_readings", "_failed"].some((key) => changed.has(key)) || hasHassChanged(this._drawnHass, this.hass, this._entityIds);
+      return ["_config", "_ready", "_readings", "_failed", "_width"].some((key) => changed.has(key)) || hasHassChanged(this._drawnHass, this.hass, this._entityIds);
     }
     // shouldUpdate only lets an update through with _config and hass set, so
     // the ! below in willUpdate, render and updated are safe.
     willUpdate() {
       this._drawnHass = this.hass;
+      if (this.clientWidth) {
+        this._width = Math.round(this.clientWidth - PADDING);
+      }
     }
     updated() {
       const config = this._config;
@@ -1922,6 +1971,7 @@
 								.locale=${hass.locale}
 								.needle=${true}
 								.levels=${levels}
+								style=${config.height ? `max-width: ${config.height * 2}px` : A}
 							></ha-gauge>
 							<p class="title">
 								${known ? `${Math.round(systolic)}/${Math.round(diastolic)} ${unit}` : hass.localize("state.default.unavailable")}
@@ -1953,7 +2003,10 @@
         return showChart ? b2`<div class="message">${translate("text.no_readings", language, { days })}</div>` : b2`<div class="end"></div>`;
       }
       const end = Date.now();
-      const input = {
+      const type = config.chart_type === void 0 || config.chart_type === "gauge" ? "bars" : config.chart_type;
+      const chart = CHARTS[type];
+      const base = {
+        width: this._width,
         readings: this._readings,
         scheme,
         start: end - days * DAY_MS2,
@@ -1962,11 +2015,12 @@
         language,
         timeZone: hass.locale.time_zone === "server" ? hass.config.time_zone : void 0
       };
-      const type = config.chart_type === void 0 || config.chart_type === "gauge" ? "bars" : config.chart_type;
-      const chart = CHARTS[type];
+      const input = { ...base, height: config.height ?? chart.height(base) };
       const shares = sharesOf(this._readings, scheme);
       return b2`
-			${showChart ? b2`<svg viewBox=${`0 0 ${WIDTH} ${chart.height(input)}`}>${chart.draw(input)}</svg>` : A}
+			${showChart ? b2`<svg width=${input.width} height=${input.height} viewBox=${`0 0 ${input.width} ${input.height}`}>
+						${chart.draw(input)}
+					</svg>` : A}
 			${shows(config, "show_legend") ? b2`<div class="legend">
 						${shares.map(
         ({ category, count }) => b2`<span style=${`--category-color: ${category.color}`}>
@@ -1983,15 +2037,21 @@
   __ready2 = new WeakMap();
   __readings = new WeakMap();
   __failed = new WeakMap();
+  __width = new WeakMap();
   __decorateElement(_init2, 4, "hass", _hass_dec2, BloodPressureCard, _hass2);
   __decorateElement(_init2, 4, "_config", __config_dec2, BloodPressureCard, __config2);
   __decorateElement(_init2, 4, "_ready", __ready_dec2, BloodPressureCard, __ready2);
   __decorateElement(_init2, 4, "_readings", __readings_dec, BloodPressureCard, __readings);
   __decorateElement(_init2, 4, "_failed", __failed_dec, BloodPressureCard, __failed);
+  __decorateElement(_init2, 4, "_width", __width_dec, BloodPressureCard, __width);
   __decoratorMetadata(_init2, BloodPressureCard);
   // The header copies Home Assistant's entity card
   // (src/panels/lovelace/cards/hui-entity-card.ts). The additions are marked.
   __publicField(BloodPressureCard, "styles", i`
+		/* Added: a block, so the card can measure its width for the chart. */
+		:host {
+			display: block;
+		}
 		ha-card {
 			height: 100%;
 			display: flex;
@@ -2062,7 +2122,7 @@
 		.details:first-child,
 		.scales:first-child,
 		svg:first-child {
-			padding-top: 16px;
+			margin-top: 16px;
 		}
 		.range-text {
 			min-width: 52px;
@@ -2102,12 +2162,10 @@
 			border-radius: 2px;
 			background-color: var(--primary-text-color);
 		}
+		/* The chart is drawn at the size it shows, so text and dots keep their size. */
 		svg {
 			display: block;
-			width: 100%;
-			height: auto;
-			padding: 0 16px;
-			box-sizing: border-box;
+			margin: 0 16px;
 		}
 		.grid {
 			stroke: var(--divider-color);
