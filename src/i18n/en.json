@@ -41,8 +41,8 @@
 	},
 	"guideline": {
 		"esc_2024": "ESC 2024, Europe (default)",
-		"esc_esh_2018": "ESC/ESH 2018, Europe",
-		"acc_aha_2017": "ACC/AHA 2017, United States"
+		"esc_esh_2018": "ESC/ESH 2018 and ESH 2023, Europe",
+		"acc_aha_2017": "ACC/AHA 2017 and 2025, United States"
 	},
 	"category": {
 		"low": "Low",

@@ -41,8 +41,8 @@
 	},
 	"guideline": {
 		"esc_2024": "ESC 2024, Europa (standard)",
-		"esc_esh_2018": "ESC/ESH 2018, Europa",
-		"acc_aha_2017": "ACC/AHA 2017, USA"
+		"esc_esh_2018": "ESC/ESH 2018 og ESH 2023, Europa",
+		"acc_aha_2017": "ACC/AHA 2017 og 2025, USA"
 	},
 	"category": {
 		"low": "Lavt",

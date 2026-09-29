@@ -51,7 +51,8 @@ const GUIDELINES: Record<GuidelineId, Category[]> = {
 		{ key: "elevated", systolic: 120, diastolic: 70, color: "amber" },
 		{ key: "hypertension", systolic: 140, diastolic: 90, color: "red" },
 	],
-	// 2018 ESC/ESH Guidelines for the management of arterial hypertension.
+	// 2018 ESC/ESH Guidelines for the management of arterial hypertension. The
+	// 2023 ESH Guidelines keep these categories.
 	esc_esh_2018: [
 		{ key: "optimal", systolic: 0, diastolic: 0, color: "green" },
 		{ key: "normal", systolic: 120, diastolic: 80, color: "light-green" },
@@ -60,8 +61,9 @@ const GUIDELINES: Record<GuidelineId, Category[]> = {
 		{ key: "grade_2", systolic: 160, diastolic: 100, color: "deep-orange" },
 		{ key: "grade_3", systolic: 180, diastolic: 110, color: "red" },
 	],
-	// 2017 ACC/AHA Guideline for high blood pressure in adults. Elevated is
-	// set by the systolic value alone, and a crisis starts above 180 or above 120.
+	// 2017 ACC/AHA Guideline for high blood pressure in adults, whose categories
+	// the 2025 guideline keeps. Elevated is set by the systolic value alone, and a
+	// crisis starts above 180 or above 120.
 	acc_aha_2017: [
 		{ key: "normal", systolic: 0, diastolic: 0, color: "green" },
 		{ key: "elevated", systolic: 120, diastolic: Infinity, color: "amber" },
