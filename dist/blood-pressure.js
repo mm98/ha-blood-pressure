@@ -1,4 +1,4 @@
-/* Blood pressure 0.2.0, https://github.com/mm98/ha-blood-pressure */
+/* Blood pressure 0.2.1, https://github.com/mm98/ha-blood-pressure */
 "use strict";
 (() => {
   var __create = Object.create;
@@ -747,7 +747,8 @@
       { key: "elevated", systolic: 120, diastolic: 70, color: "amber" },
       { key: "hypertension", systolic: 140, diastolic: 90, color: "red" }
     ],
-    // 2018 ESC/ESH Guidelines for the management of arterial hypertension.
+    // 2018 ESC/ESH Guidelines for the management of arterial hypertension. The
+    // 2023 ESH Guidelines keep these categories.
     esc_esh_2018: [
       { key: "optimal", systolic: 0, diastolic: 0, color: "green" },
       { key: "normal", systolic: 120, diastolic: 80, color: "light-green" },
@@ -756,8 +757,9 @@
       { key: "grade_2", systolic: 160, diastolic: 100, color: "deep-orange" },
       { key: "grade_3", systolic: 180, diastolic: 110, color: "red" }
     ],
-    // 2017 ACC/AHA Guideline for high blood pressure in adults. Elevated is
-    // set by the systolic value alone, and a crisis starts above 180 or above 120.
+    // 2017 ACC/AHA Guideline for high blood pressure in adults, whose categories
+    // the 2025 guideline keeps. Elevated is set by the systolic value alone, and a
+    // crisis starts above 180 or above 120.
     acc_aha_2017: [
       { key: "normal", systolic: 0, diastolic: 0, color: "green" },
       { key: "elevated", systolic: 120, diastolic: Infinity, color: "amber" },
@@ -857,8 +859,8 @@
     },
     guideline: {
       esc_2024: "ESC 2024, Europa (standard)",
-      esc_esh_2018: "ESC/ESH 2018, Europa",
-      acc_aha_2017: "ACC/AHA 2017, USA"
+      esc_esh_2018: "ESC/ESH 2018 og ESH 2023, Europa",
+      acc_aha_2017: "ACC/AHA 2017 og 2025, USA"
     },
     category: {
       low: "Lavt",
@@ -935,8 +937,8 @@
     },
     guideline: {
       esc_2024: "ESC 2024, Europa (Standard)",
-      esc_esh_2018: "ESC/ESH 2018, Europa",
-      acc_aha_2017: "ACC/AHA 2017, USA"
+      esc_esh_2018: "ESC/ESH 2018 und ESH 2023, Europa",
+      acc_aha_2017: "ACC/AHA 2017 und 2025, USA"
     },
     category: {
       low: "Niedrig",
@@ -1013,8 +1015,8 @@
     },
     guideline: {
       esc_2024: "ESC 2024, Europe (default)",
-      esc_esh_2018: "ESC/ESH 2018, Europe",
-      acc_aha_2017: "ACC/AHA 2017, United States"
+      esc_esh_2018: "ESC/ESH 2018 and ESH 2023, Europe",
+      acc_aha_2017: "ACC/AHA 2017 and 2025, United States"
     },
     category: {
       low: "Low",
@@ -1091,8 +1093,8 @@
     },
     guideline: {
       esc_2024: "ESC 2024, Europa (predeterminada)",
-      esc_esh_2018: "ESC/ESH 2018, Europa",
-      acc_aha_2017: "ACC/AHA 2017, Estados Unidos"
+      esc_esh_2018: "ESC/ESH 2018 y ESH 2023, Europa",
+      acc_aha_2017: "ACC/AHA 2017 y 2025, Estados Unidos"
     },
     category: {
       low: "Baja",
@@ -2287,7 +2289,7 @@
 	`);
 
   // src/blood-pressure.ts
-  var VERSION = "0.2.0";
+  var VERSION = "0.2.1";
   var REPOSITORY = "https://github.com/mm98/ha-blood-pressure";
   var defineOnce = (tag, element) => {
     if (!customElements.get(tag)) {

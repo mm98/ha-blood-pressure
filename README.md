@@ -2,7 +2,7 @@
 
 A dashboard card for your blood pressure. It shows your latest reading and its category, the average of the period, and a chart of your readings: as bars, as lines, as daily averages, as separate charts per value, as a calendar, as a pie chart or as a gauge.
 
-The colors follow a blood pressure guideline: the 2024 guidelines of the European Society of Cardiology by default, or the 2018 European or the 2017 American guidelines.
+The colors follow a blood pressure guideline: the 2024 guidelines of the European Society of Cardiology by default, or the 2018 and 2023 European or the 2017 and 2025 American guidelines.
 
 ![The card with 106/71 mmHg, Elevated, the scales of the latest reading and ten days of readings as colored bars](images/bars.png)
 
@@ -218,6 +218,8 @@ show_legend: false
 
 A reading gets the highest category that its systolic or its diastolic value reaches. Below the lowest category, a reading under 90 systolic or under 60 diastolic counts as low. All values in mmHg.
 
+The 2023 guidelines of the European Society of Hypertension keep the categories of `esc_esh_2018`, and the 2025 American guideline keeps those of `acc_aha_2017`, so these two settings cover the newer versions too.
+
 | `guideline` | Categories |
 |---|---|
 | `esc_2024` (default) | Non-elevated: below 120 and below 70. Elevated: 120 to 139, or 70 to 89. Hypertension: 140 or more, or 90 or more. |
@@ -237,7 +239,7 @@ The colors show the category of a reading, not a diagnosis. The targets your doc
 | `chart_type` | `bars` (default), `lines`, `daily`, `split`, `calendar`, `pie` or `gauge`. |
 | `days_to_show` | How many days the chart and the average cover. 10 by default. |
 | `height` | The height of the chart in pixels. By default each chart type has its own height. |
-| `guideline` | `esc_2024` (default), `esc_esh_2018` or `acc_aha_2017`. See **Guidelines** below. |
+| `guideline` | `esc_2024` (default), `esc_esh_2018` (also ESH 2023) or `acc_aha_2017` (also ACC/AHA 2025). See **Guidelines** below. |
 | `colors` | Another color for some categories, like `elevated: orange`. See **Colors** above. |
 | `show_title`, `show_icon` | The title and the icon at the top. |
 | `show_state` | The latest value. |
